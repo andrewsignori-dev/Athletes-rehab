@@ -13,9 +13,13 @@ df.columns = df.columns.str.strip()
 df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
 df['Date'] = df['Date'].dt.date  # YYYY-MM-DD
 
-# Ensure 'Load (kg)' and 'Tempo' are numeric
+# Ensure 'Load (kg)' is numeric
 df['Load (kg)'] = pd.to_numeric(df['Load (kg)'], errors='coerce')
-df['Tempo'] = pd.to_numeric(df['Tempo (seconds)'], errors='coerce')  # assuming Tempo column exists
+
+# Check if 'Tempo' exists
+has_tempo = 'Tempo' in df.columns
+if has_tempo:
+    df['Tempo'] = pd.to_numeric(df['Tempo'], errors='coerce')
 
 st.title("🏋️‍♂️ All_REHAB Dashboard")
 
@@ -78,38 +82,33 @@ st.write("### Filtered Data", filtered_df)
 st.write("### Summary Statistics")
 st.dataframe(filtered_df.describe())
 
-# --- Dual-axis chart with Altair ---
+# --- Altair chart ---
 if not filtered_df.empty:
-    agg_df = filtered_df.groupby('Date').agg({'Load (kg)': 'sum', 'Tempo': 'mean'}).reset_index()
-
+    agg_df = filtered_df.groupby('Date').agg({'Load (kg)': 'sum'}).reset_index()
     base = alt.Chart(agg_df).encode(x=alt.X('Date:T', title='Date'))
 
     load_bar = base.mark_bar(color='steelblue').encode(
         y=alt.Y('Load (kg):Q', axis=alt.Axis(title='Load (kg)'))
     )
 
-    tempo_bar = base.mark_bar(color='orange').encode(
-        y=alt.Y('Tempo:Q', axis=alt.Axis(title='Tempo'))
-    )
-
-    # Combine with second y-axis
-    chart = alt.layer(
-        load_bar,
-        tempo_bar
-    ).resolve_scale(
-        y='independent'
-    ).properties(
-        width=800,
-        height=400,
-        title="Load and Tempo per Date"
-    )
+    if has_tempo:
+        tempo_df = filtered_df.groupby('Date').agg({'Tempo':'mean'}).reset_index()
+        tempo_line = alt.Chart(tempo_df).mark_line(color='orange', size=3).encode(
+            x='Date:T',
+            y=alt.Y('Tempo:Q', axis=alt.Axis(title='Tempo'))
+        )
+        chart = alt.layer(load_bar, tempo_line).resolve_scale(y='independent').properties(
+            width=800, height=400, title='Load and Tempo per Date'
+        )
+    else:
+        chart = load_bar.properties(width=800, height=400, title='Load per Date')
 
     st.altair_chart(chart, use_container_width=True)
 
 # --- Download filtered data ---
 def convert_df_to_excel(df):
     output = BytesIO()
-    writer = pd.ExcelWriter(output, engine='xlsxwriter')
+    writer = pd.ExcelWriter(output, engine='openpyxl')  # use openpyxl
     df.to_excel(writer, index=False, sheet_name='Filtered_Data')
     writer.save()
     processed_data = output.getvalue()
@@ -123,4 +122,3 @@ st.download_button(
     file_name="Filtered_All_REHAB.xlsx",
     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 )
-

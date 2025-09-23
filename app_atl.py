@@ -105,20 +105,12 @@ if not filtered_df.empty:
 
     st.altair_chart(chart, use_container_width=True)
 
-# --- Download filtered data ---
-def convert_df_to_excel(df):
-    output = BytesIO()
-    writer = pd.ExcelWriter(output, engine='openpyxl')  # use openpyxl
-    df.to_excel(writer, index=False, sheet_name='Filtered_Data')
-    writer.save()
-    processed_data = output.getvalue()
-    return processed_data
+# -----------------------------
+# Download filtered data
+# -----------------------------
+def convert_df(df):
+    return df.to_csv(index=False).encode('utf-8')
 
-excel_data = convert_df_to_excel(filtered_df)
+csv = convert_df(df_filtered)
+st.download_button("⬇️ Download filtered data", csv, "filtered_training.csv", "text/csv")
 
-st.download_button(
-    label="📥 Download Filtered Data as Excel",
-    data=excel_data,
-    file_name="Filtered_All_REHAB.xlsx",
-    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-)

@@ -58,6 +58,7 @@ else:
 
 # Code filter
 code_search = st.sidebar.text_input("Search Code Contains", "")
+exercise_search = st.sidebar.text_input("Search Exercise Contains", "")
 
 # --- Apply filters ---
 filtered_df = df.copy()
@@ -76,6 +77,9 @@ if load_range != (None, None):
 
 if code_search:
     filtered_df = filtered_df[filtered_df['Code'].str.contains(code_search, case=False, na=False)]
+
+if exercise_search:
+    filtered_df = filtered_df[filtered_df['Exercise'].str.contains(exercise_search, case=False, na=False)]
 
 # --- Display results ---
 st.write("### Filtered Data", filtered_df)
@@ -117,5 +121,6 @@ st.download_button(
     file_name="filtered_training.csv",
     mime="text/csv"
 )
+
 
 

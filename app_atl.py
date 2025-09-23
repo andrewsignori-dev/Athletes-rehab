@@ -15,7 +15,7 @@ df['Date'] = df['Date'].dt.date  # YYYY-MM-DD
 
 # Ensure 'Load (kg)' and 'Tempo' are numeric
 df['Load (kg)'] = pd.to_numeric(df['Load (kg)'], errors='coerce')
-df['Tempo'] = pd.to_numeric(df['Tempo'], errors='coerce')  # assuming Tempo column exists
+df['Tempo'] = pd.to_numeric(df['Tempo (seconds)'], errors='coerce')  # assuming Tempo column exists
 
 st.title("🏋️‍♂️ All_REHAB Dashboard")
 
@@ -123,3 +123,4 @@ st.download_button(
     file_name="Filtered_All_REHAB.xlsx",
     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 )
+

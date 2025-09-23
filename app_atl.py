@@ -91,8 +91,6 @@ if 'Tempo' in filtered_df.columns:
 st.write("### Summary Statistics")
 st.dataframe(filtered_df[summary_cols].describe())
 
-st.dataframe(filtered_df.describe())
-
 # --- Altair chart ---
 if not filtered_df.empty:
     agg_df = filtered_df.groupby('Date').agg({'Load (kg)': 'sum'}).reset_index()
@@ -128,6 +126,7 @@ st.download_button(
     file_name="filtered_training.csv",
     mime="text/csv"
 )
+
 
 
 

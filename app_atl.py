@@ -1,8 +1,8 @@
-!pip install plotly
 import pandas as pd
 import streamlit as st
 from io import BytesIO
-import plotly.graph_objects as go
+import matplotlib.pyplot as plt
+import numpy as np
 
 # --- Load data ---
 df = pd.read_excel("All_REHAB.xlsx")
@@ -79,46 +79,35 @@ st.write("### Filtered Data", filtered_df)
 st.write("### Summary Statistics")
 st.dataframe(filtered_df.describe())
 
-# --- Dual-axis bar plot ---
+# --- Dual-axis bar plot with Matplotlib ---
 if not filtered_df.empty:
-    # Aggregate data by Date
+    # Aggregate by Date
     agg_df = filtered_df.groupby('Date').agg({'Load (kg)': 'sum', 'Tempo': 'mean'}).reset_index()
+    
+    x = np.arange(len(agg_df['Date']))
+    width = 0.4
 
-    fig = go.Figure()
+    fig, ax1 = plt.subplots(figsize=(12,6))
 
-    # Bar for Load
-    fig.add_trace(
-        go.Bar(
-            x=agg_df['Date'],
-            y=agg_df['Load (kg)'],
-            name='Load (kg)',
-            yaxis='y1',
-            marker_color='steelblue'
-        )
-    )
+    # Left Y-axis: Load
+    ax1.bar(x - width/2, agg_df['Load (kg)'], width=width, color='steelblue', label='Load (kg)')
+    ax1.set_xlabel('Date')
+    ax1.set_ylabel('Load (kg)', color='steelblue')
+    ax1.tick_params(axis='y', labelcolor='steelblue')
+    ax1.set_xticks(x)
+    ax1.set_xticklabels(agg_df['Date'], rotation=45, ha='right')
 
-    # Bar for Tempo
-    fig.add_trace(
-        go.Bar(
-            x=agg_df['Date'],
-            y=agg_df['Tempo'],
-            name='Tempo',
-            yaxis='y2',
-            marker_color='orange'
-        )
-    )
+    # Right Y-axis: Tempo
+    ax2 = ax1.twinx()
+    ax2.bar(x + width/2, agg_df['Tempo'], width=width, color='orange', label='Tempo')
+    ax2.set_ylabel('Tempo', color='orange')
+    ax2.tick_params(axis='y', labelcolor='orange')
 
-    # Layout with two y-axes
-    fig.update_layout(
-        title='Load and Tempo per Date',
-        xaxis=dict(title='Date'),
-        yaxis=dict(title='Load (kg)', side='left', showgrid=False),
-        yaxis2=dict(title='Tempo', overlaying='y', side='right', showgrid=False),
-        barmode='group',
-        legend=dict(x=0.1, y=1.1, orientation='h')
-    )
+    # Legends
+    ax1.legend(loc='upper left')
+    ax2.legend(loc='upper right')
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.pyplot(fig)
 
 # --- Download filtered data ---
 def convert_df_to_excel(df):
@@ -137,4 +126,3 @@ st.download_button(
     file_name="Filtered_All_REHAB.xlsx",
     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 )
-

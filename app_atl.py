@@ -1,8 +1,7 @@
 import pandas as pd
 import streamlit as st
 from io import BytesIO
-import matplotlib.pyplot as plt
-import numpy as np
+import altair as alt
 
 # --- Load data ---
 df = pd.read_excel("All_REHAB.xlsx")
@@ -79,35 +78,33 @@ st.write("### Filtered Data", filtered_df)
 st.write("### Summary Statistics")
 st.dataframe(filtered_df.describe())
 
-# --- Dual-axis bar plot with Matplotlib ---
+# --- Dual-axis chart with Altair ---
 if not filtered_df.empty:
-    # Aggregate by Date
     agg_df = filtered_df.groupby('Date').agg({'Load (kg)': 'sum', 'Tempo': 'mean'}).reset_index()
-    
-    x = np.arange(len(agg_df['Date']))
-    width = 0.4
 
-    fig, ax1 = plt.subplots(figsize=(12,6))
+    base = alt.Chart(agg_df).encode(x=alt.X('Date:T', title='Date'))
 
-    # Left Y-axis: Load
-    ax1.bar(x - width/2, agg_df['Load (kg)'], width=width, color='steelblue', label='Load (kg)')
-    ax1.set_xlabel('Date')
-    ax1.set_ylabel('Load (kg)', color='steelblue')
-    ax1.tick_params(axis='y', labelcolor='steelblue')
-    ax1.set_xticks(x)
-    ax1.set_xticklabels(agg_df['Date'], rotation=45, ha='right')
+    load_bar = base.mark_bar(color='steelblue').encode(
+        y=alt.Y('Load (kg):Q', axis=alt.Axis(title='Load (kg)'))
+    )
 
-    # Right Y-axis: Tempo
-    ax2 = ax1.twinx()
-    ax2.bar(x + width/2, agg_df['Tempo'], width=width, color='orange', label='Tempo')
-    ax2.set_ylabel('Tempo', color='orange')
-    ax2.tick_params(axis='y', labelcolor='orange')
+    tempo_bar = base.mark_bar(color='orange').encode(
+        y=alt.Y('Tempo:Q', axis=alt.Axis(title='Tempo'))
+    )
 
-    # Legends
-    ax1.legend(loc='upper left')
-    ax2.legend(loc='upper right')
+    # Combine with second y-axis
+    chart = alt.layer(
+        load_bar,
+        tempo_bar
+    ).resolve_scale(
+        y='independent'
+    ).properties(
+        width=800,
+        height=400,
+        title="Load and Tempo per Date"
+    )
 
-    st.pyplot(fig)
+    st.altair_chart(chart, use_container_width=True)
 
 # --- Download filtered data ---
 def convert_df_to_excel(df):

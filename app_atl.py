@@ -105,12 +105,17 @@ if not filtered_df.empty:
 
     st.altair_chart(chart, use_container_width=True)
 
-# -----------------------------
-# Download filtered data
-# -----------------------------
+# --- Download filtered data as CSV ---
 def convert_df(df):
     return df.to_csv(index=False).encode('utf-8')
 
-csv = convert_df(df_filtered)
-st.download_button("⬇️ Download filtered data", csv, "filtered_training.csv", "text/csv")
+csv_data = convert_df(filtered_df)
+
+st.download_button(
+    label="⬇️ Download Filtered Data as CSV",
+    data=csv_data,
+    file_name="filtered_training.csv",
+    mime="text/csv"
+)
+
 

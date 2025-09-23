@@ -1,3 +1,4 @@
+!pip install plotly
 import pandas as pd
 import streamlit as st
 from io import BytesIO
@@ -136,3 +137,4 @@ st.download_button(
     file_name="Filtered_All_REHAB.xlsx",
     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 )
+

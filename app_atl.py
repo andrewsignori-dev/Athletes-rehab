@@ -43,6 +43,10 @@ if selected_year:
 months = sorted(df_year_filtered['Date'].apply(lambda x: x.month).dropna().unique())
 selected_month = st.sidebar.multiselect("Select Month(s)", months)
 
+# Code filter
+code_search = st.sidebar.text_input("Search Code Contains", "")
+exercise_search = st.sidebar.text_input("Search Exercise Contains", "")
+
 # Load filter
 if 'Load (kg)' in df.columns:
     min_load = float(df['Load (kg)'].min(skipna=True))
@@ -56,10 +60,6 @@ if 'Load (kg)' in df.columns:
 else:
     load_range = (None, None)
 
-# Code filter
-code_search = st.sidebar.text_input("Search Code Contains", "")
-exercise_search = st.sidebar.text_input("Search Exercise Contains", "")
-
 # --- Apply filters ---
 filtered_df = df.copy()
 
@@ -72,18 +72,25 @@ if selected_year:
 if selected_month:
     filtered_df = filtered_df[filtered_df['Date'].apply(lambda x: x.month).isin(selected_month)]
 
-if load_range != (None, None):
-    filtered_df = filtered_df[filtered_df['Load (kg)'].between(load_range[0], load_range[1])]
-
 if code_search:
     filtered_df = filtered_df[filtered_df['Code'].str.contains(code_search, case=False, na=False)]
 
 if exercise_search:
     filtered_df = filtered_df[filtered_df['Exercise'].str.contains(exercise_search, case=False, na=False)]
 
+if load_range != (None, None):
+    filtered_df = filtered_df[filtered_df['Load (kg)'].between(load_range[0], load_range[1])]
+
 # --- Display results ---
 st.write("### Filtered Data", filtered_df)
+# Select only columns for summary statistics
+summary_cols = ['Set', 'Rep', 'Load (kg)']
+if 'Tempo' in filtered_df.columns:
+    summary_cols.append('Tempo')
+
 st.write("### Summary Statistics")
+st.dataframe(filtered_df[summary_cols].describe())
+
 st.dataframe(filtered_df.describe())
 
 # --- Altair chart ---
@@ -121,6 +128,7 @@ st.download_button(
     file_name="filtered_training.csv",
     mime="text/csv"
 )
+
 
 
 

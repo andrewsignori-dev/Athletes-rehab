@@ -10,6 +10,9 @@ df.columns = df.columns.str.strip()
 # Ensure 'Date' is datetime
 df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
 
+# Convert Date to a nice format for display
+df['Date'] = df['Date'].dt.date  # shows as YYYY-MM-DD
+
 # Ensure 'Load (kg)' is numeric
 df['Load (kg)'] = pd.to_numeric(df['Load (kg)'], errors='coerce')
 
@@ -23,28 +26,19 @@ names = df['Name'].dropna().unique()
 selected_names = st.sidebar.multiselect("Select Name(s)", names)
 
 # 2️⃣ Year filter
-years = sorted(df['Date'].dt.year.dropna().unique())
+years = sorted(df['Date'].apply(lambda x: x.year).dropna().unique())
 selected_year = st.sidebar.multiselect("Select Year(s)", years)
 
-# Filter data for dynamic Month and Week options
+# Filter data for dynamic Month options
 df_year_filtered = df.copy()
 if selected_year:
-    df_year_filtered = df_year_filtered[df_year_filtered['Date'].dt.year.isin(selected_year)]
+    df_year_filtered = df_year_filtered[df_year_filtered['Date'].apply(lambda x: x.year).isin(selected_year)]
 
 # 3️⃣ Month filter (dynamic)
-months = sorted(df_year_filtered['Date'].dt.month.dropna().unique())
+months = sorted(df_year_filtered['Date'].apply(lambda x: x.month).dropna().unique())
 selected_month = st.sidebar.multiselect("Select Month(s)", months)
 
-# Further filter for dynamic Week options
-df_month_filtered = df_year_filtered.copy()
-if selected_month:
-    df_month_filtered = df_month_filtered[df_month_filtered['Date'].dt.month.isin(selected_month)]
-
-# 4️⃣ Week filter (dynamic)
-weeks = sorted(df_month_filtered['Date'].dt.isocalendar().week.dropna().unique())
-selected_weeks = st.sidebar.multiselect("Select Week(s)", weeks)
-
-# 5️⃣ Load filter
+# 4️⃣ Load filter
 if 'Load (kg)' in df.columns:
     min_load = float(df['Load (kg)'].min(skipna=True))
     max_load = float(df['Load (kg)'].max(skipna=True))
@@ -57,7 +51,7 @@ if 'Load (kg)' in df.columns:
 else:
     load_range = (None, None)
 
-# 6️⃣ Code filter
+# 5️⃣ Code filter
 code_search = st.sidebar.text_input("Search Code Contains", "")
 
 # --- Apply filters only if selected ---
@@ -67,13 +61,10 @@ if selected_names:
     filtered_df = filtered_df[filtered_df['Name'].isin(selected_names)]
 
 if selected_year:
-    filtered_df = filtered_df[filtered_df['Date'].dt.year.isin(selected_year)]
+    filtered_df = filtered_df[filtered_df['Date'].apply(lambda x: x.year).isin(selected_year)]
 
 if selected_month:
-    filtered_df = filtered_df[filtered_df['Date'].dt.month.isin(selected_month)]
-
-if selected_weeks:
-    filtered_df = filtered_df[filtered_df['Date'].dt.isocalendar().week.isin(selected_weeks)]
+    filtered_df = filtered_df[filtered_df['Date'].apply(lambda x: x.month).isin(selected_month)]
 
 if load_range != (None, None):
     filtered_df = filtered_df[filtered_df['Load (kg)'].between(load_range[0], load_range[1])]
@@ -87,3 +78,4 @@ st.write("### Filtered Data", filtered_df)
 # --- Summary statistics ---
 st.write("### Summary Statistics")
 st.dataframe(filtered_df.describe())
+

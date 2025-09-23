@@ -20,37 +20,63 @@ st.sidebar.header("Filters")
 
 # 1️⃣ Name filter
 names = df['Name'].dropna().unique()
-selected_names = st.sidebar.multiselect("Select Name(s)", names, default=names)
+selected_names = st.sidebar.multiselect("Select Name(s)", names)
 
-# 2️⃣ Date filter
+# 2️⃣ Year filter
 years = sorted(df['Date'].dt.year.dropna().unique())
-selected_year = st.sidebar.multiselect("Select Year(s)", years, default=years)
+selected_year = st.sidebar.multiselect("Select Year(s)", years)
 
-months = sorted(df['Date'].dt.month.dropna().unique())
-selected_month = st.sidebar.multiselect("Select Month(s)", months, default=months)
+# Filter data for dynamic Month and Week options
+df_year_filtered = df.copy()
+if selected_year:
+    df_year_filtered = df_year_filtered[df_year_filtered['Date'].dt.year.isin(selected_year)]
 
-weeks = sorted(df['Date'].dt.isocalendar().week.dropna().unique())
-selected_weeks = st.sidebar.multiselect("Select Week(s)", weeks, default=weeks)
+# 3️⃣ Month filter (dynamic)
+months = sorted(df_year_filtered['Date'].dt.month.dropna().unique())
+selected_month = st.sidebar.multiselect("Select Month(s)", months)
 
-# 3️⃣ Load filter
+# Further filter for dynamic Week options
+df_month_filtered = df_year_filtered.copy()
+if selected_month:
+    df_month_filtered = df_month_filtered[df_month_filtered['Date'].dt.month.isin(selected_month)]
+
+# 4️⃣ Week filter (dynamic)
+weeks = sorted(df_month_filtered['Date'].dt.isocalendar().week.dropna().unique())
+selected_weeks = st.sidebar.multiselect("Select Week(s)", weeks)
+
+# 5️⃣ Load filter
 if 'Load (kg)' in df.columns:
     min_load = float(df['Load (kg)'].min(skipna=True))
     max_load = float(df['Load (kg)'].max(skipna=True))
-    load_range = st.sidebar.slider("Select Load (kg) Range", min_value=min_load, max_value=max_load, value=(min_load, max_load))
+    load_range = st.sidebar.slider(
+        "Select Load (kg) Range", 
+        min_value=min_load, 
+        max_value=max_load, 
+        value=(min_load, max_load)
+    )
 else:
-    load_range = (0, 999999)
+    load_range = (None, None)
 
-# 4️⃣ Code filter
+# 6️⃣ Code filter
 code_search = st.sidebar.text_input("Search Code Contains", "")
 
-# --- Apply filters ---
-filtered_df = df[
-    (df['Name'].isin(selected_names)) &
-    (df['Date'].dt.year.isin(selected_year)) &
-    (df['Date'].dt.month.isin(selected_month)) &
-    (df['Date'].dt.isocalendar().week.isin(selected_weeks)) &
-    (df['Load (kg)'].between(load_range[0], load_range[1]))
-]
+# --- Apply filters only if selected ---
+filtered_df = df.copy()
+
+if selected_names:
+    filtered_df = filtered_df[filtered_df['Name'].isin(selected_names)]
+
+if selected_year:
+    filtered_df = filtered_df[filtered_df['Date'].dt.year.isin(selected_year)]
+
+if selected_month:
+    filtered_df = filtered_df[filtered_df['Date'].dt.month.isin(selected_month)]
+
+if selected_weeks:
+    filtered_df = filtered_df[filtered_df['Date'].dt.isocalendar().week.isin(selected_weeks)]
+
+if load_range != (None, None):
+    filtered_df = filtered_df[filtered_df['Load (kg)'].between(load_range[0], load_range[1])]
 
 if code_search:
     filtered_df = filtered_df[filtered_df['Code'].str.contains(code_search, case=False, na=False)]

@@ -117,7 +117,7 @@ tab1, tab2, tab3, tab4 = st.tabs(["📄 Filtered Data", "📊 Summary Stats", "�
 
 with tab1:
     st.write("### Filtered Data")
-    st.dataframe(filtered_df)
+    st.dataframe(df)
 
     # Last training registered
     if not filtered_df.empty:
@@ -195,6 +195,7 @@ with tab4:
         )
         fig_pie.update_traces(textinfo='label+percent', pull=[0.05]*len(family_counts))
         st.plotly_chart(fig_pie, use_container_width=True)
+
 
 
 

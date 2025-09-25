@@ -155,10 +155,15 @@ if not filtered_df.empty and 'Family' in filtered_df.columns:
     total_count = family_counts['Count'].sum()
     family_counts['Percentage'] = (family_counts['Count'] / total_count * 100).round(1)
 
-    # Altair Pie Chart with percentage labels
+    # Create a label with percentage for legend
+    family_counts['Family_Label'] = family_counts.apply(
+        lambda row: f"{row['Family']} ({row['Percentage']}%)", axis=1
+    )
+
+    # Altair Pie Chart with percentage in legend labels
     pie_chart = alt.Chart(family_counts).mark_arc().encode(
         theta=alt.Theta(field="Count", type="quantitative"),
-        color=alt.Color(field="Family", type="nominal"),
+        color=alt.Color(field="Family_Label", type="nominal", title="Family (with % share)"),
         tooltip=[
             alt.Tooltip('Family:N', title='Family'),
             alt.Tooltip('Count:Q', title='Count'),
@@ -170,12 +175,7 @@ if not filtered_df.empty and 'Family' in filtered_df.columns:
         title="Proportion of Exercises by Family (All Categories)"
     )
 
-    # Add percentage labels on slices
-    text = pie_chart.mark_text(radiusOffset=15).encode(
-        text=alt.Text('Percentage:Q', format='.1f')
-    )
-
-    st.altair_chart(pie_chart + text, use_container_width=True)
+    st.altair_chart(pie_chart, use_container_width=True)
 
 # --- Download filtered data as CSV ---
 def convert_df(df):
@@ -189,6 +189,7 @@ st.download_button(
     file_name="filtered_training.csv",
     mime="text/csv"
 )
+
 
 
 

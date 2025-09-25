@@ -110,59 +110,37 @@ if has_tempo:
 st.write("### Summary Statistics")
 st.dataframe(filtered_df[summary_cols].describe())
 
-# --- Plot Load Distribution over Time by Exercise ---
-if not filtered_df.empty:
+# --- Plot Load Distribution Over Time by Keyword ---
+if not filtered_df.empty and exercise_search:
+    # Prepare keywords
+    exercise_keywords = [kw.strip() for kw in exercise_search.split(",") if kw.strip()]
+
+    # Assign each row to the first matching keyword
+    def match_keyword(ex):
+        for kw in exercise_keywords:
+            if kw.lower() in str(ex).lower():
+                return kw
+        return "Other"
+
+    filtered_df['Exercise_Keyword'] = filtered_df['Exercise'].apply(match_keyword)
+
+    # Aggregate average load per Month-Year and keyword
     filtered_df['Month_Year'] = filtered_df['Date'].apply(lambda x: x.strftime('%b-%Y'))
+    load_time_df = filtered_df.groupby(['Month_Year', 'Exercise_Keyword'])['Load (kg)'].mean().reset_index()
+    load_time_df['Month_Year_Date'] = pd.to_datetime(load_time_df['Month_Year'], format='%b-%Y')
+    load_time_df = load_time_df.sort_values('Month_Year_Date')
 
-    # Decide if we have multiple exercises in the filter
-    if exercise_search:
-        exercise_keywords = [kw.strip() for kw in exercise_search.split(",") if kw.strip()]
-        if len(exercise_keywords) > 1:
-            # Aggregate average load per Month-Year and Exercise
-            load_time_df = filtered_df.groupby(['Month_Year', 'Exercise'])['Load (kg)'].mean().reset_index()
-            load_time_df['Month_Year_Date'] = pd.to_datetime(load_time_df['Month_Year'], format='%b-%Y')
-            load_time_df = load_time_df.sort_values('Month_Year_Date')
-
-            chart = alt.Chart(load_time_df).mark_bar().encode(
-                x=alt.X('Month_Year:N', sort=list(load_time_df['Month_Year']), title='Month-Year'),
-                y=alt.Y('Load (kg):Q', title='Average Load (kg)'),
-                color=alt.Color('Exercise:N', title='Exercise'),
-                tooltip=['Month_Year', 'Exercise', 'Load (kg)']
-            ).properties(
-                width=700,
-                height=400,
-                title="Average Load Distribution Over Time by Exercise"
-            )
-        else:
-            # Single exercise selected, normal chart
-            load_time_df = filtered_df.groupby('Month_Year')['Load (kg)'].mean().reset_index()
-            load_time_df['Month_Year_Date'] = pd.to_datetime(load_time_df['Month_Year'], format='%b-%Y')
-            load_time_df = load_time_df.sort_values('Month_Year_Date')
-
-            chart = alt.Chart(load_time_df).mark_bar(color='skyblue').encode(
-                x=alt.X('Month_Year:N', sort=list(load_time_df['Month_Year']), title='Month-Year'),
-                y=alt.Y('Load (kg):Q', title='Average Load (kg)'),
-                tooltip=['Month_Year', 'Load (kg)']
-            ).properties(
-                width=700,
-                height=400,
-                title="Average Load Distribution Over Time"
-            )
-    else:
-        # No exercise filter, normal chart
-        load_time_df = filtered_df.groupby('Month_Year')['Load (kg)'].mean().reset_index()
-        load_time_df['Month_Year_Date'] = pd.to_datetime(load_time_df['Month_Year'], format='%b-%Y')
-        load_time_df = load_time_df.sort_values('Month_Year_Date')
-
-        chart = alt.Chart(load_time_df).mark_bar(color='skyblue').encode(
-            x=alt.X('Month_Year:N', sort=list(load_time_df['Month_Year']), title='Month-Year'),
-            y=alt.Y('Load (kg):Q', title='Average Load (kg)'),
-            tooltip=['Month_Year', 'Load (kg)']
-        ).properties(
-            width=700,
-            height=400,
-            title="Average Load Distribution Over Time"
-        )
+    # Altair chart with keyword colors
+    chart = alt.Chart(load_time_df).mark_bar().encode(
+        x=alt.X('Month_Year:N', sort=list(load_time_df['Month_Year']), title='Month-Year'),
+        y=alt.Y('Load (kg):Q', title='Average Load (kg)'),
+        color=alt.Color('Exercise_Keyword:N', title='Keyword'),
+        tooltip=['Month_Year', 'Exercise_Keyword', 'Load (kg)']
+    ).properties(
+        width=700,
+        height=400,
+        title="Average Load Distribution Over Time by Filter Keyword"
+    )
 
     st.altair_chart(chart, use_container_width=True)
 
@@ -178,6 +156,7 @@ st.download_button(
     file_name="filtered_training.csv",
     mime="text/csv"
 )
+
 
 
 

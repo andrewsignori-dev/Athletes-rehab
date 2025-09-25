@@ -1,8 +1,7 @@
 import pandas as pd
 import streamlit as st
-import altair as alt
+import plotly.express as px
 from io import BytesIO
-
 
 # --- Load data ---
 df = pd.read_excel("Al_data.xlsx")
@@ -22,6 +21,7 @@ has_tempo = 'Tempo' in df.columns
 if has_tempo:
     df['Tempo'] = pd.to_numeric(df['Tempo'], errors='coerce')
 
+st.set_page_config(page_title="Athletes Dashboard", layout="wide")
 st.title("🏋️‍♂️ Athletes Dashboard")
 
 # --- Sidebar filters ---
@@ -49,8 +49,9 @@ months = sorted(df_year_filtered['Date'].apply(lambda x: x.month).dropna().uniqu
 selected_month = st.sidebar.multiselect("Select Month(s)", months)
 
 # Multi-keyword search filters
-code_search = st.sidebar.text_input("Search Code Contains (comma separated)", "")
-exercise_search = st.sidebar.text_input("Search Exercise Contains (comma separated)", "")
+with st.sidebar.expander("🔎 Advanced Filters"):
+    code_search = st.text_input("Search Code Contains (comma separated)", "")
+    exercise_search = st.text_input("Search Exercise Contains (comma separated)", "")
 
 # Load filter
 if 'Load (kg)' in df.columns:
@@ -100,106 +101,102 @@ if exercise_search and 'Exercise' in filtered_df.columns:
 if load_range != (None, None):
     filtered_df = filtered_df[filtered_df['Load (kg)'].between(load_range[0], load_range[1])]
 
-# --- Display results ---
-st.write("### Filtered Data", filtered_df)
-
-# Summary statistics
-summary_cols = ['Set', 'Rep', 'Load (kg)']
-if has_tempo:
-    summary_cols.append('Tempo')
-
-# --- Last Training Registered Table ---
+# --- Metrics at the top ---
 if not filtered_df.empty:
-    # Find the latest date in the filtered dataset
     latest_date = filtered_df['Date'].max()
+else:
+    latest_date = pd.NaT
 
-    # Filter only rows with that date
-    last_training_df = filtered_df[filtered_df['Date'] == latest_date]
+col1, col2, col3 = st.columns(3)
+col1.metric("Total Entries", len(filtered_df))
+col2.metric("Unique Exercises", filtered_df['Exercise'].nunique() if not filtered_df.empty else 0)
+col3.metric("Latest Training Date", latest_date.strftime('%d-%m-%Y') if pd.notna(latest_date) else "-")
 
-    st.write(f"### Last Training Registered (Date: {latest_date.strftime('%d-%m-%Y')})")
-    st.dataframe(last_training_df)
+# --- Tabs ---
+tab1, tab2, tab3, tab4 = st.tabs(["📄 Filtered Data", "📊 Summary Stats", "📈 Trends", "🥧 Family Proportion"])
 
-st.write("### Summary Statistics")
-st.dataframe(filtered_df[summary_cols].describe())
+with tab1:
+    st.write("### Filtered Data")
+    st.dataframe(filtered_df)
 
-# --- Plot Load Distribution Over Time by Keyword ---
-if not filtered_df.empty:
-    # Prepare keywords
-    exercise_keywords = [kw.strip() for kw in exercise_search.split(",") if kw.strip()]
+    # Last training registered
+    if not filtered_df.empty:
+        last_training_df = filtered_df[filtered_df['Date'] == latest_date]
+        st.write(f"### Last Training Registered (Date: {latest_date.strftime('%d-%m-%Y')})")
+        st.dataframe(last_training_df)
 
-    # Assign each row to the first matching keyword
-    def match_keyword(ex):
-        for kw in exercise_keywords:
-            if kw.lower() in str(ex).lower():
-                return kw
-        return "Other"
-
-    filtered_df['Exercise_Keyword'] = filtered_df['Exercise'].apply(match_keyword)
-
-    # Aggregate average load per Month-Year and keyword
-    filtered_df['Month_Year'] = filtered_df['Date'].apply(lambda x: x.strftime('%b-%Y'))
-    load_time_df = filtered_df.groupby(['Month_Year', 'Exercise_Keyword'])['Load (kg)'].mean().reset_index()
-    load_time_df['Month_Year_Date'] = pd.to_datetime(load_time_df['Month_Year'], format='%b-%Y')
-    load_time_df = load_time_df.sort_values('Month_Year_Date')
-
-    # Altair chart with keyword colors
-    chart = alt.Chart(load_time_df).mark_bar().encode(
-        x=alt.X('Month_Year:N', sort=list(load_time_df['Month_Year']), title='Month-Year'),
-        y=alt.Y('Load (kg):Q', title='Average Load (kg)'),
-        color=alt.Color('Exercise_Keyword:N', title='Keyword'),
-        tooltip=['Month_Year', 'Exercise_Keyword', 'Load (kg)']
-    ).properties(
-        width=700,
-        height=400,
-        title="Average Load Distribution Over Time by Filter Keyword"
+    # Download filtered data as CSV
+    csv_data = filtered_df.to_csv(index=False).encode('utf-8')
+    st.download_button(
+        label="⬇️ Download Filtered Data as CSV",
+        data=csv_data,
+        file_name="filtered_training.csv",
+        mime="text/csv"
     )
 
-    st.altair_chart(chart, use_container_width=True)
+with tab2:
+    st.write("### Summary Statistics")
+    summary_cols = ['Set', 'Rep', 'Load (kg)']
+    if has_tempo:
+        summary_cols.append('Tempo')
+    if not filtered_df.empty:
+        st.dataframe(filtered_df[summary_cols].describe())
 
-# --- Pie Chart for Family Column ---
-if not filtered_df.empty and 'Family' in filtered_df.columns:
-    # Count number of exercises per Family category
-    family_counts = filtered_df['Family'].value_counts().reset_index()
-    family_counts.columns = ['Family', 'Count']
+with tab3:
+    st.write("### Average Load Distribution Over Time by Filter Keyword")
+    if not filtered_df.empty:
+        exercise_keywords = [kw.strip() for kw in exercise_search.split(",") if kw.strip()]
 
-    # Compute percentages
-    total_count = family_counts['Count'].sum()
-    family_counts['Percentage'] = (family_counts['Count'] / total_count * 100).round(1)
+        def match_keyword(ex):
+            for kw in exercise_keywords:
+                if kw.lower() in str(ex).lower():
+                    return kw
+            return "Other"
 
-    # Create a label with percentage for legend
-    family_counts['Family_Label'] = family_counts.apply(
-        lambda row: f"{row['Family']} ({row['Percentage']}%)", axis=1
-    )
+        filtered_df['Exercise_Keyword'] = filtered_df['Exercise'].apply(match_keyword)
+        filtered_df['Month_Year'] = pd.to_datetime(filtered_df['Date']).dt.to_period('M').astype(str)
+        load_time_df = filtered_df.groupby(['Month_Year', 'Exercise_Keyword'])['Load (kg)'].mean().reset_index()
 
-    # Altair Pie Chart with percentage in legend labels
-    pie_chart = alt.Chart(family_counts).mark_arc().encode(
-        theta=alt.Theta(field="Count", type="quantitative"),
-        color=alt.Color(field="Family_Label", type="nominal", title="Family (with % share)"),
-        tooltip=[
-            alt.Tooltip('Family:N', title='Family'),
-            alt.Tooltip('Count:Q', title='Count'),
-            alt.Tooltip('Percentage:Q', title='Percentage (%)')
-        ]
-    ).properties(
-        width=400,
-        height=400,
-        title="Proportion of Exercises by Family"
-    )
+        fig_bar = px.bar(
+            load_time_df,
+            x='Month_Year',
+            y='Load (kg)',
+            color='Exercise_Keyword',
+            barmode='group',
+            title='Average Load (kg) Over Time'
+        )
+        st.plotly_chart(fig_bar, use_container_width=True)
 
-    st.altair_chart(pie_chart, use_container_width=True)
+        # Optional: Heatmap
+        heatmap = px.density_heatmap(
+            load_time_df,
+            x='Month_Year',
+            y='Exercise_Keyword',
+            z='Load (kg)',
+            color_continuous_scale='Blues',
+            title='Heatmap of Average Load per Exercise Keyword Over Time'
+        )
+        st.plotly_chart(heatmap, use_container_width=True)
 
-# --- Download filtered data as CSV ---
-def convert_df(df):
-    return df.to_csv(index=False).encode('utf-8')
+with tab4:
+    st.write("### Proportion of Exercises by Family")
+    if not filtered_df.empty and 'Family' in filtered_df.columns:
+        family_counts = filtered_df['Family'].value_counts().reset_index()
+        family_counts.columns = ['Family', 'Count']
+        total = family_counts['Count'].sum()
+        family_counts['Percentage'] = (family_counts['Count'] / total * 100).round(1)
 
-csv_data = convert_df(filtered_df)
+        fig_pie = px.pie(
+            family_counts,
+            names='Family',
+            values='Count',
+            title='Proportion of Exercises by Family',
+            hole=0.3
+        )
+        fig_pie.update_traces(textinfo='label+percent', pull=[0.05]*len(family_counts))
+        st.plotly_chart(fig_pie, use_container_width=True)
 
-st.download_button(
-    label="⬇️ Download Filtered Data as CSV",
-    data=csv_data,
-    file_name="filtered_training.csv",
-    mime="text/csv"
-)
+
 
 
 

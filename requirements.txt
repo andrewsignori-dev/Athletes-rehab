@@ -3,6 +3,9 @@ streamlit
 openpyxl
 gdown
 altair
-FPDF
+fpdf
+altair_saver
+selenium
+
 
 

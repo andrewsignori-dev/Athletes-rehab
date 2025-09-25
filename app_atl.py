@@ -48,8 +48,23 @@ months = sorted(df_year_filtered['Date'].apply(lambda x: x.month).dropna().uniqu
 selected_month = st.sidebar.multiselect("Select Month(s)", months)
 
 # Code filter
-code_search = st.sidebar.text_input("Search Code Contains", "")
-exercise_search = st.sidebar.text_input("Search Exercise Contains", "")
+# --- Code filter (multiple keywords) ---
+code_search = st.sidebar.text_input("Search Code Contains (comma separated)", "")
+if code_search:
+    code_keywords = [kw.strip() for kw in code_search.split(",") if kw.strip()]
+    if code_keywords:
+        filtered_df = filtered_df[filtered_df['Code'].apply(
+            lambda x: any(kw.lower() in str(x).lower() for kw in code_keywords)
+        )]
+
+# --- Exercise filter (multiple keywords) ---
+exercise_search = st.sidebar.text_input("Search Exercise Contains (comma separated)", "")
+if exercise_search:
+    exercise_keywords = [kw.strip() for kw in exercise_search.split(",") if kw.strip()]
+    if exercise_keywords:
+        filtered_df = filtered_df[filtered_df['Exercise'].apply(
+            lambda x: any(kw.lower() in str(x).lower() for kw in exercise_keywords)
+        )]
 
 # Load filter
 if 'Load (kg)' in df.columns:
@@ -135,6 +150,7 @@ st.download_button(
     file_name="filtered_training.csv",
     mime="text/csv"
 )
+
 
 
 

@@ -9,7 +9,7 @@ df = pd.read_excel("All_REHAB.xlsx")
 # Clean column names
 df.columns = df.columns.str.strip()
 
-# Ensure 'Date' is datetime and format nicely
+# Ensure 'Date' is datetime
 df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
 df['Date'] = df['Date'].dt.date  # YYYY-MM-DD
 
@@ -21,7 +21,7 @@ has_tempo = 'Tempo' in df.columns
 if has_tempo:
     df['Tempo'] = pd.to_numeric(df['Tempo'], errors='coerce')
 
-st.title("🏋️‍♂️ Atlethes Dashboard")
+st.title("🏋️‍♂️ Athletes Dashboard")
 
 # --- Sidebar filters ---
 st.sidebar.header("Filters")
@@ -47,23 +47,9 @@ if selected_year:
 months = sorted(df_year_filtered['Date'].apply(lambda x: x.month).dropna().unique())
 selected_month = st.sidebar.multiselect("Select Month(s)", months)
 
-# --- Code filter (multiple keywords) ---
+# Multi-keyword search filters
 code_search = st.sidebar.text_input("Search Code Contains (comma separated)", "")
-if code_search and 'Code' in filtered_df.columns:
-    code_keywords = [kw.strip() for kw in code_search.split(",") if kw.strip()]
-    if code_keywords:
-        filtered_df = filtered_df[filtered_df['Code'].apply(
-            lambda x: any(kw.lower() in str(x).lower() for kw in code_keywords)
-        )]
-
-# --- Exercise filter (multiple keywords) ---
 exercise_search = st.sidebar.text_input("Search Exercise Contains (comma separated)", "")
-if exercise_search and 'Exercise' in filtered_df.columns:
-    exercise_keywords = [kw.strip() for kw in exercise_search.split(",") if kw.strip()]
-    if exercise_keywords:
-        filtered_df = filtered_df[filtered_df['Exercise'].apply(
-            lambda x: any(kw.lower() in str(x).lower() for kw in exercise_keywords)
-        )]
 
 # Load filter
 if 'Load (kg)' in df.columns:
@@ -93,35 +79,44 @@ if selected_year:
 if selected_month:
     filtered_df = filtered_df[filtered_df['Date'].apply(lambda x: x.month).isin(selected_month)]
 
-if code_search:
-    filtered_df = filtered_df[filtered_df['Code'].str.contains(code_search, case=False, na=False)]
+# --- Code filter (multi-keyword) ---
+if code_search and 'Code' in filtered_df.columns:
+    code_keywords = [kw.strip() for kw in code_search.split(",") if kw.strip()]
+    if code_keywords:
+        filtered_df = filtered_df[filtered_df['Code'].apply(
+            lambda x: any(kw.lower() in str(x).lower() for kw in code_keywords)
+        )]
 
-if exercise_search:
-    filtered_df = filtered_df[filtered_df['Exercise'].str.contains(exercise_search, case=False, na=False)]
+# --- Exercise filter (multi-keyword) ---
+if exercise_search and 'Exercise' in filtered_df.columns:
+    exercise_keywords = [kw.strip() for kw in exercise_search.split(",") if kw.strip()]
+    if exercise_keywords:
+        filtered_df = filtered_df[filtered_df['Exercise'].apply(
+            lambda x: any(kw.lower() in str(x).lower() for kw in exercise_keywords)
+        )]
 
+# Load filter
 if load_range != (None, None):
     filtered_df = filtered_df[filtered_df['Load (kg)'].between(load_range[0], load_range[1])]
 
 # --- Display results ---
 st.write("### Filtered Data", filtered_df)
-# Select only columns for summary statistics
+
+# Summary statistics
 summary_cols = ['Set', 'Rep', 'Load (kg)']
-if 'Tempo' in filtered_df.columns:
+if has_tempo:
     summary_cols.append('Tempo')
+
+st.write("### Summary Statistics")
+st.dataframe(filtered_df[summary_cols].describe())
 
 # --- Plot Load Distribution over Time ---
 if not filtered_df.empty:
-    # Create a 'Month-Year' column for plotting
     filtered_df['Month_Year'] = filtered_df['Date'].apply(lambda x: x.strftime('%b-%Y'))
-    
-    # Aggregate average load per Month-Year
     load_time_df = filtered_df.groupby('Month_Year')['Load (kg)'].mean().reset_index()
-
-    # Sort by actual date for proper x-axis ordering
     load_time_df['Month_Year_Date'] = pd.to_datetime(load_time_df['Month_Year'], format='%b-%Y')
     load_time_df = load_time_df.sort_values('Month_Year_Date')
 
-    # Altair chart
     chart = alt.Chart(load_time_df).mark_bar(color='skyblue').encode(
         x=alt.X('Month_Year:N', sort=list(load_time_df['Month_Year']), title='Month-Year'),
         y=alt.Y('Load (kg):Q', title='Average Load (kg)'),
@@ -133,9 +128,6 @@ if not filtered_df.empty:
     )
 
     st.altair_chart(chart, use_container_width=True)
-
-st.write("### Summary Statistics")
-st.dataframe(filtered_df[summary_cols].describe())
 
 # --- Download filtered data as CSV ---
 def convert_df(df):
@@ -149,6 +141,8 @@ st.download_button(
     file_name="filtered_training.csv",
     mime="text/csv"
 )
+
+
 
 
 

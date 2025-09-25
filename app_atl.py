@@ -100,34 +100,6 @@ if 'Tempo' in filtered_df.columns:
 st.write("### Summary Statistics")
 st.dataframe(filtered_df[summary_cols].describe())
 
-# --- Altair chart ---
-if not filtered_df.empty:
-    # Create Month-Year column for grouping
-    filtered_df['MonthYear'] = pd.to_datetime(filtered_df['Date']).dt.to_period('M').astype(str)
-
-    agg_df = filtered_df.groupby('MonthYear').agg({'Load (kg)': 'sum'}).reset_index()
-    base = alt.Chart(agg_df).encode(
-        x=alt.X('MonthYear:O', title='Month-Year', sort=None)
-    )
-
-    load_bar = base.mark_bar(color='steelblue').encode(
-        y=alt.Y('Load (kg):Q', axis=alt.Axis(title='Load (kg)'))
-    )
-
-    if has_tempo:
-        tempo_df = filtered_df.groupby('MonthYear').agg({'Tempo':'mean'}).reset_index()
-        tempo_line = alt.Chart(tempo_df).mark_line(color='orange', size=3).encode(
-            x='MonthYear:O',
-            y=alt.Y('Tempo:Q', axis=alt.Axis(title='Tempo'))
-        )
-        chart = alt.layer(load_bar, tempo_line).resolve_scale(y='independent').properties(
-            width=800, height=400, title='Load and Tempo per Month-Year'
-        )
-    else:
-        chart = load_bar.properties(width=800, height=400, title='Load per Month-Year')
-
-    st.altair_chart(chart, use_container_width=True)
-
 # --- Download filtered data as CSV ---
 def convert_df(df):
     return df.to_csv(index=False).encode('utf-8')
@@ -140,6 +112,7 @@ st.download_button(
     file_name="filtered_training.csv",
     mime="text/csv"
 )
+
 
 
 

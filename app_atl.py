@@ -108,6 +108,17 @@ summary_cols = ['Set', 'Rep', 'Load (kg)']
 if has_tempo:
     summary_cols.append('Tempo')
 
+# --- Last Training Registered Table ---
+if not filtered_df.empty:
+    # Find the latest date in the filtered dataset
+    latest_date = filtered_df['Date'].max()
+
+    # Filter only rows with that date
+    last_training_df = filtered_df[filtered_df['Date'] == latest_date]
+
+    st.write(f"### 🏁 Last Training Registered (Date: {latest_date.strftime('%d-%m-%Y')})")
+    st.dataframe(last_training_df)
+
 st.write("### Summary Statistics")
 st.dataframe(filtered_df[summary_cols].describe())
 
@@ -172,7 +183,7 @@ if not filtered_df.empty and 'Family' in filtered_df.columns:
     ).properties(
         width=400,
         height=400,
-        title="Proportion of Exercises by Family (All Categories)"
+        title="Proportion of Exercises by Family"
     )
 
     st.altair_chart(pie_chart, use_container_width=True)
@@ -189,6 +200,7 @@ st.download_button(
     file_name="filtered_training.csv",
     mime="text/csv"
 )
+
 
 
 

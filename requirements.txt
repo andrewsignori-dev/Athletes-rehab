@@ -3,6 +3,6 @@ streamlit
 openpyxl
 gdown
 altair
-reportlab
-matplotlib
+FPDF
+
 

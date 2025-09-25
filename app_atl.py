@@ -26,6 +26,10 @@ st.title("🏋️‍♂️ All_REHAB Dashboard")
 # --- Sidebar filters ---
 st.sidebar.header("Filters")
 
+# Select Area 
+areas = df['Area'].dropna().unique()
+selected_area = st.sidebar.multiselect("Select Area(s)", areas)
+
 # Name filter
 names = df['Name'].dropna().unique()
 selected_names = st.sidebar.multiselect("Select Name(s)", names)
@@ -62,6 +66,9 @@ else:
 
 # --- Apply filters ---
 filtered_df = df.copy()
+
+if selected_areas:
+    filtered_df = filtered_df[filtered_df['Area'].isin(selected_areas)]
 
 if selected_names:
     filtered_df = filtered_df[filtered_df['Name'].isin(selected_names)]
@@ -126,6 +133,7 @@ st.download_button(
     file_name="filtered_training.csv",
     mime="text/csv"
 )
+
 
 
 

@@ -4,4 +4,5 @@ openpyxl
 gdown
 altair
 reportlab
+matplotlib
 

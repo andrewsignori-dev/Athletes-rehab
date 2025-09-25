@@ -88,6 +88,13 @@ if exercise_search:
 if load_range != (None, None):
     filtered_df = filtered_df[filtered_df['Load (kg)'].between(load_range[0], load_range[1])]
 
+# --- Display results ---
+st.write("### Filtered Data", filtered_df)
+# Select only columns for summary statistics
+summary_cols = ['Set', 'Rep', 'Load (kg)']
+if 'Tempo' in filtered_df.columns:
+    summary_cols.append('Tempo')
+
 # --- Plot Load Distribution over Time ---
 if not filtered_df.empty:
     # Create a 'Month-Year' column for plotting
@@ -113,13 +120,6 @@ if not filtered_df.empty:
 
     st.altair_chart(chart, use_container_width=True)
 
-# --- Display results ---
-st.write("### Filtered Data", filtered_df)
-# Select only columns for summary statistics
-summary_cols = ['Set', 'Rep', 'Load (kg)']
-if 'Tempo' in filtered_df.columns:
-    summary_cols.append('Tempo')
-
 st.write("### Summary Statistics")
 st.dataframe(filtered_df[summary_cols].describe())
 
@@ -135,6 +135,7 @@ st.download_button(
     file_name="filtered_training.csv",
     mime="text/csv"
 )
+
 
 
 

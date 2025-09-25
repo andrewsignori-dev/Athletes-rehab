@@ -4,7 +4,7 @@ from io import BytesIO
 import altair as alt
 
 # --- Load data ---
-df = pd.read_excel("Copia di All (1).xlsx")
+df = pd.read_excel("All_REHAB.xlsx")
 
 # Clean column names
 df.columns = df.columns.str.strip()
@@ -88,6 +88,31 @@ if exercise_search:
 if load_range != (None, None):
     filtered_df = filtered_df[filtered_df['Load (kg)'].between(load_range[0], load_range[1])]
 
+# --- Plot Load Distribution over Time ---
+if not filtered_df.empty:
+    # Create a 'Month-Year' column for plotting
+    filtered_df['Month_Year'] = filtered_df['Date'].apply(lambda x: x.strftime('%b-%Y'))
+    
+    # Aggregate average load per Month-Year
+    load_time_df = filtered_df.groupby('Month_Year')['Load (kg)'].mean().reset_index()
+
+    # Sort by actual date for proper x-axis ordering
+    load_time_df['Month_Year_Date'] = pd.to_datetime(load_time_df['Month_Year'], format='%b-%Y')
+    load_time_df = load_time_df.sort_values('Month_Year_Date')
+
+    # Altair chart
+    chart = alt.Chart(load_time_df).mark_bar(color='skyblue').encode(
+        x=alt.X('Month_Year:N', sort=list(load_time_df['Month_Year']), title='Month-Year'),
+        y=alt.Y('Load (kg):Q', title='Average Load (kg)'),
+        tooltip=['Month_Year', 'Load (kg)']
+    ).properties(
+        width=700,
+        height=400,
+        title="Average Load Distribution Over Time"
+    )
+
+    st.altair_chart(chart, use_container_width=True)
+
 # --- Display results ---
 st.write("### Filtered Data", filtered_df)
 # Select only columns for summary statistics
@@ -110,6 +135,7 @@ st.download_button(
     file_name="filtered_training.csv",
     mime="text/csv"
 )
+
 
 
 

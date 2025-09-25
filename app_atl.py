@@ -2,15 +2,22 @@ import pandas as pd
 import streamlit as st
 import altair as alt
 from io import BytesIO
-from fpdf import FPDF
+
 
 # --- Load data ---
 df = pd.read_excel("All_REHAB.xlsx")
+
+# Clean column names
 df.columns = df.columns.str.strip()
 
-df['Date'] = pd.to_datetime(df['Date'], errors='coerce').dt.date
+# Ensure 'Date' is datetime
+df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
+df['Date'] = df['Date'].dt.date  # YYYY-MM-DD
+
+# Ensure 'Load (kg)' is numeric
 df['Load (kg)'] = pd.to_numeric(df['Load (kg)'], errors='coerce')
 
+# Check if 'Tempo' exists
 has_tempo = 'Tempo' in df.columns
 if has_tempo:
     df['Tempo'] = pd.to_numeric(df['Tempo'], errors='coerce')
@@ -20,30 +27,40 @@ st.title("🏋️‍♂️ Athletes Dashboard")
 # --- Sidebar filters ---
 st.sidebar.header("Filters")
 
+# Select Area 
 areas = df['Area'].dropna().unique()
 selected_areas = st.sidebar.multiselect("Select Area(s)", areas)
 
+# Name filter
 names = df['Name'].dropna().unique()
 selected_names = st.sidebar.multiselect("Select Name(s)", names)
 
+# Year filter
 years = sorted(df['Date'].apply(lambda x: x.year).dropna().unique())
 selected_year = st.sidebar.multiselect("Select Year(s)", years)
 
+# Filter data for dynamic Month options
 df_year_filtered = df.copy()
 if selected_year:
     df_year_filtered = df_year_filtered[df_year_filtered['Date'].apply(lambda x: x.year).isin(selected_year)]
 
+# Month filter (dynamic)
 months = sorted(df_year_filtered['Date'].apply(lambda x: x.month).dropna().unique())
 selected_month = st.sidebar.multiselect("Select Month(s)", months)
 
+# Multi-keyword search filters
 code_search = st.sidebar.text_input("Search Code Contains (comma separated)", "")
 exercise_search = st.sidebar.text_input("Search Exercise Contains (comma separated)", "")
 
+# Load filter
 if 'Load (kg)' in df.columns:
     min_load = float(df['Load (kg)'].min(skipna=True))
     max_load = float(df['Load (kg)'].max(skipna=True))
     load_range = st.sidebar.slider(
-        "Select Load (kg) Range", min_value=min_load, max_value=max_load, value=(min_load, max_load)
+        "Select Load (kg) Range", 
+        min_value=min_load, 
+        max_value=max_load, 
+        value=(min_load, max_load)
     )
 else:
     load_range = (None, None)
@@ -53,13 +70,17 @@ filtered_df = df.copy()
 
 if selected_areas:
     filtered_df = filtered_df[filtered_df['Area'].isin(selected_areas)]
+
 if selected_names:
     filtered_df = filtered_df[filtered_df['Name'].isin(selected_names)]
+
 if selected_year:
     filtered_df = filtered_df[filtered_df['Date'].apply(lambda x: x.year).isin(selected_year)]
+
 if selected_month:
     filtered_df = filtered_df[filtered_df['Date'].apply(lambda x: x.month).isin(selected_month)]
 
+# --- Code filter (multi-keyword) ---
 if code_search and 'Code' in filtered_df.columns:
     code_keywords = [kw.strip() for kw in code_search.split(",") if kw.strip()]
     if code_keywords:
@@ -67,6 +88,7 @@ if code_search and 'Code' in filtered_df.columns:
             lambda x: any(kw.lower() in str(x).lower() for kw in code_keywords)
         )]
 
+# --- Exercise filter (multi-keyword) ---
 if exercise_search and 'Exercise' in filtered_df.columns:
     exercise_keywords = [kw.strip() for kw in exercise_search.split(",") if kw.strip()]
     if exercise_keywords:
@@ -74,12 +96,14 @@ if exercise_search and 'Exercise' in filtered_df.columns:
             lambda x: any(kw.lower() in str(x).lower() for kw in exercise_keywords)
         )]
 
+# Load filter
 if load_range != (None, None):
     filtered_df = filtered_df[filtered_df['Load (kg)'].between(load_range[0], load_range[1])]
 
-# --- Display filtered data and summary ---
+# --- Display results ---
 st.write("### Filtered Data", filtered_df)
 
+# Summary statistics
 summary_cols = ['Set', 'Rep', 'Load (kg)']
 if has_tempo:
     summary_cols.append('Tempo')
@@ -87,11 +111,12 @@ if has_tempo:
 st.write("### Summary Statistics")
 st.dataframe(filtered_df[summary_cols].describe())
 
-# --- Plot Load Distribution by Exercise Keyword ---
-chart = None
+# --- Plot Load Distribution Over Time by Keyword ---
 if not filtered_df.empty and exercise_search:
+    # Prepare keywords
     exercise_keywords = [kw.strip() for kw in exercise_search.split(",") if kw.strip()]
 
+    # Assign each row to the first matching keyword
     def match_keyword(ex):
         for kw in exercise_keywords:
             if kw.lower() in str(ex).lower():
@@ -99,12 +124,14 @@ if not filtered_df.empty and exercise_search:
         return "Other"
 
     filtered_df['Exercise_Keyword'] = filtered_df['Exercise'].apply(match_keyword)
-    filtered_df['Month_Year'] = filtered_df['Date'].apply(lambda x: x.strftime('%b-%Y'))
 
+    # Aggregate average load per Month-Year and keyword
+    filtered_df['Month_Year'] = filtered_df['Date'].apply(lambda x: x.strftime('%b-%Y'))
     load_time_df = filtered_df.groupby(['Month_Year', 'Exercise_Keyword'])['Load (kg)'].mean().reset_index()
     load_time_df['Month_Year_Date'] = pd.to_datetime(load_time_df['Month_Year'], format='%b-%Y')
     load_time_df = load_time_df.sort_values('Month_Year_Date')
 
+    # Altair chart with keyword colors
     chart = alt.Chart(load_time_df).mark_bar().encode(
         x=alt.X('Month_Year:N', sort=list(load_time_df['Month_Year']), title='Month-Year'),
         y=alt.Y('Load (kg):Q', title='Average Load (kg)'),
@@ -118,69 +145,18 @@ if not filtered_df.empty and exercise_search:
 
     st.altair_chart(chart, use_container_width=True)
 
-# --- CSV download ---
+# --- Download filtered data as CSV ---
 def convert_df(df):
     return df.to_csv(index=False).encode('utf-8')
 
+csv_data = convert_df(filtered_df)
+
 st.download_button(
     label="⬇️ Download Filtered Data as CSV",
-    data=convert_df(filtered_df),
+    data=csv_data,
     file_name="filtered_training.csv",
     mime="text/csv"
 )
-
-# --- PDF download (no chart) ---
-def generate_pdf_simple(filtered_df, filters_summary):
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", 'B', 16)
-    pdf.cell(0, 10, "Athletes Dashboard Report", ln=True, align="C")
-
-    pdf.set_font("Arial", '', 12)
-    pdf.ln(5)
-    pdf.multi_cell(0, 8, f"Filters Applied:\n{filters_summary}")
-    pdf.ln(5)
-    pdf.cell(0, 8, f"Total Rows: {len(filtered_df)}", ln=True)
-
-    pdf.ln(5)
-    pdf.set_font("Arial", 'B', 12)
-    pdf.cell(0, 8, "Summary Statistics", ln=True)
-    pdf.set_font("Arial", '', 10)
-    summary_df = filtered_df[summary_cols].describe()
-    for i, row in summary_df.iterrows():
-        pdf.multi_cell(0, 6, f"{i}: {row.to_dict()}")
-
-    output = BytesIO()
-    pdf.output(output)
-    output.seek(0)
-    return output
-
-# Build filters summary text
-filters_summary = ""
-if selected_areas:
-    filters_summary += f"Areas: {', '.join(selected_areas)}\n"
-if selected_names:
-    filters_summary += f"Names: {', '.join(selected_names)}\n"
-if selected_year:
-    filters_summary += f"Years: {', '.join(map(str, selected_year))}\n"
-if selected_month:
-    filters_summary += f"Months: {', '.join(map(str, selected_month))}\n"
-if code_search:
-    filters_summary += f"Code Keywords: {code_search}\n"
-if exercise_search:
-    filters_summary += f"Exercise Keywords: {exercise_search}\n"
-filters_summary += f"Load Range: {load_range[0]} - {load_range[1]} kg\n"
-
-# Show PDF download button
-if not filtered_df.empty:
-    pdf_buffer = generate_pdf_simple(filtered_df, filters_summary)
-    st.download_button(
-        label="⬇️ Download PDF Report",
-        data=pdf_buffer,
-        file_name="athletes_report.pdf",
-        mime="application/pdf"
-    )
-
 
 
 

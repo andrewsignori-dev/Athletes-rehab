@@ -21,7 +21,7 @@ has_tempo = 'Tempo' in df.columns
 if has_tempo:
     df['Tempo'] = pd.to_numeric(df['Tempo'], errors='coerce')
 
-st.title("🏋️‍♂️ All_REHAB Dashboard")
+st.title("🏋️‍♂️ Atlethes Dashboard")
 
 # --- Sidebar filters ---
 st.sidebar.header("Filters")
@@ -110,6 +110,7 @@ st.download_button(
     file_name="filtered_training.csv",
     mime="text/csv"
 )
+
 
 
 

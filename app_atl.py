@@ -64,8 +64,6 @@ if 'Load (kg)' in df.columns:
 else:
     load_range = (None, None)
 
-
-
 # --- Apply filters ---
 filtered_df = df.copy()
 
@@ -112,6 +110,7 @@ st.download_button(
     file_name="filtered_training.csv",
     mime="text/csv"
 )
+
 
 
 

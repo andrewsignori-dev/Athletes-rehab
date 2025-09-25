@@ -151,25 +151,31 @@ if not filtered_df.empty and 'Family' in filtered_df.columns:
     family_counts = filtered_df['Family'].value_counts().reset_index()
     family_counts.columns = ['Family', 'Count']
 
-    # Keep top 5 categories
-    top5 = family_counts.head(5)
-    others_sum = family_counts['Count'][5:].sum()
-    if others_sum > 0:
-        # Add "Other" category for remaining
-        top5 = pd.concat([top5, pd.DataFrame({'Family': ['Other'], 'Count': [others_sum]})], ignore_index=True)
+    # Compute percentages
+    total_count = family_counts['Count'].sum()
+    family_counts['Percentage'] = (family_counts['Count'] / total_count * 100).round(1)
 
-    # Altair Pie Chart
-    pie_chart = alt.Chart(top5).mark_arc().encode(
+    # Altair Pie Chart with percentage labels
+    pie_chart = alt.Chart(family_counts).mark_arc().encode(
         theta=alt.Theta(field="Count", type="quantitative"),
         color=alt.Color(field="Family", type="nominal"),
-        tooltip=['Family', 'Count']
+        tooltip=[
+            alt.Tooltip('Family:N', title='Family'),
+            alt.Tooltip('Count:Q', title='Count'),
+            alt.Tooltip('Percentage:Q', title='Percentage (%)')
+        ]
     ).properties(
         width=400,
         height=400,
-        title="Proportion of Exercises by Family (Top 5)"
+        title="Proportion of Exercises by Family (All Categories)"
     )
 
-    st.altair_chart(pie_chart, use_container_width=True)
+    # Add percentage labels on slices
+    text = pie_chart.mark_text(radiusOffset=15).encode(
+        text=alt.Text('Percentage:Q', format='.1f')
+    )
+
+    st.altair_chart(pie_chart + text, use_container_width=True)
 
 # --- Download filtered data as CSV ---
 def convert_df(df):
@@ -183,6 +189,7 @@ st.download_button(
     file_name="filtered_training.csv",
     mime="text/csv"
 )
+
 
 
 

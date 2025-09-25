@@ -6,6 +6,7 @@ altair
 fpdf
 altair_saver
 selenium
+plotly
 
 
 

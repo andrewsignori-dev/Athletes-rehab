@@ -123,7 +123,7 @@ st.write("### Summary Statistics")
 st.dataframe(filtered_df[summary_cols].describe())
 
 # --- Plot Load Distribution Over Time by Keyword ---
-if not filtered_df.empty and exercise_search:
+if not filtered_df.empty:
     # Prepare keywords
     exercise_keywords = [kw.strip() for kw in exercise_search.split(",") if kw.strip()]
 
@@ -200,6 +200,7 @@ st.download_button(
     file_name="filtered_training.csv",
     mime="text/csv"
 )
+
 
 
 

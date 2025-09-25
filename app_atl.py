@@ -28,7 +28,7 @@ st.sidebar.header("Filters")
 
 # Select Area 
 areas = df['Area'].dropna().unique()
-selected_area = st.sidebar.multiselect("Select Area(s)", areas)
+selected_areas = st.sidebar.multiselect("Select Area(s)", areas)
 
 # Name filter
 names = df['Name'].dropna().unique()
@@ -133,6 +133,7 @@ st.download_button(
     file_name="filtered_training.csv",
     mime="text/csv"
 )
+
 
 
 

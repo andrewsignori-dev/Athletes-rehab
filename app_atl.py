@@ -199,8 +199,8 @@ with tab4:
 
     # Increase overall figure size
      fig_pie.update_layout(
-        width=800,
-        height=800,
+        width=700,
+        height=700,
         legend=dict(
             title="Family (with %)",
             orientation="v",  # vertical
@@ -211,6 +211,7 @@ with tab4:
     )
 
      st.plotly_chart(fig_pie)
+
 
 
 

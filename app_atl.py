@@ -5,7 +5,7 @@ from io import BytesIO
 
 
 # --- Load data ---
-df = pd.read_excel("All_REHAB.xlsx")
+df = pd.read_excel("Al_data.xlsx")
 
 # Clean column names
 df.columns = df.columns.str.strip()
@@ -145,6 +145,32 @@ if not filtered_df.empty and exercise_search:
 
     st.altair_chart(chart, use_container_width=True)
 
+# --- Pie Chart for Family Column ---
+if not filtered_df.empty and 'Family' in filtered_df.columns:
+    # Count number of exercises per Family category
+    family_counts = filtered_df['Family'].value_counts().reset_index()
+    family_counts.columns = ['Family', 'Count']
+
+    # Keep top 5 categories
+    top5 = family_counts.head(5)
+    others_sum = family_counts['Count'][5:].sum()
+    if others_sum > 0:
+        # Add "Other" category for remaining
+        top5 = pd.concat([top5, pd.DataFrame({'Family': ['Other'], 'Count': [others_sum]})], ignore_index=True)
+
+    # Altair Pie Chart
+    pie_chart = alt.Chart(top5).mark_arc().encode(
+        theta=alt.Theta(field="Count", type="quantitative"),
+        color=alt.Color(field="Family", type="nominal"),
+        tooltip=['Family', 'Count']
+    ).properties(
+        width=400,
+        height=400,
+        title="Proportion of Exercises by Family (Top 5)"
+    )
+
+    st.altair_chart(pie_chart, use_container_width=True)
+
 # --- Download filtered data as CSV ---
 def convert_df(df):
     return df.to_csv(index=False).encode('utf-8')
@@ -157,6 +183,7 @@ st.download_button(
     file_name="filtered_training.csv",
     mime="text/csv"
 )
+
 
 
 

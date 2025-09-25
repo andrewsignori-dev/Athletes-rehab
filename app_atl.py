@@ -47,10 +47,9 @@ if selected_year:
 months = sorted(df_year_filtered['Date'].apply(lambda x: x.month).dropna().unique())
 selected_month = st.sidebar.multiselect("Select Month(s)", months)
 
-# Code filter
 # --- Code filter (multiple keywords) ---
 code_search = st.sidebar.text_input("Search Code Contains (comma separated)", "")
-if code_search:
+if code_search and 'Code' in filtered_df.columns:
     code_keywords = [kw.strip() for kw in code_search.split(",") if kw.strip()]
     if code_keywords:
         filtered_df = filtered_df[filtered_df['Code'].apply(
@@ -59,7 +58,7 @@ if code_search:
 
 # --- Exercise filter (multiple keywords) ---
 exercise_search = st.sidebar.text_input("Search Exercise Contains (comma separated)", "")
-if exercise_search:
+if exercise_search and 'Exercise' in filtered_df.columns:
     exercise_keywords = [kw.strip() for kw in exercise_search.split(",") if kw.strip()]
     if exercise_keywords:
         filtered_df = filtered_df[filtered_df['Exercise'].apply(
@@ -150,6 +149,7 @@ st.download_button(
     file_name="filtered_training.csv",
     mime="text/csv"
 )
+
 
 
 

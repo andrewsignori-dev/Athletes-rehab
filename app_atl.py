@@ -3,13 +3,11 @@ import streamlit as st
 import altair as alt
 from io import BytesIO
 from fpdf import FPDF
-import altair_saver
 
 # --- Load data ---
 df = pd.read_excel("All_REHAB.xlsx")
 df.columns = df.columns.str.strip()
 
-# Ensure 'Date' is datetime
 df['Date'] = pd.to_datetime(df['Date'], errors='coerce').dt.date
 df['Load (kg)'] = pd.to_numeric(df['Load (kg)'], errors='coerce')
 
@@ -52,6 +50,7 @@ else:
 
 # --- Apply filters ---
 filtered_df = df.copy()
+
 if selected_areas:
     filtered_df = filtered_df[filtered_df['Area'].isin(selected_areas)]
 if selected_names:
@@ -60,19 +59,27 @@ if selected_year:
     filtered_df = filtered_df[filtered_df['Date'].apply(lambda x: x.year).isin(selected_year)]
 if selected_month:
     filtered_df = filtered_df[filtered_df['Date'].apply(lambda x: x.month).isin(selected_month)]
+
 if code_search and 'Code' in filtered_df.columns:
     code_keywords = [kw.strip() for kw in code_search.split(",") if kw.strip()]
     if code_keywords:
-        filtered_df = filtered_df[filtered_df['Code'].apply(lambda x: any(kw.lower() in str(x).lower() for kw in code_keywords))]
+        filtered_df = filtered_df[filtered_df['Code'].apply(
+            lambda x: any(kw.lower() in str(x).lower() for kw in code_keywords)
+        )]
+
 if exercise_search and 'Exercise' in filtered_df.columns:
     exercise_keywords = [kw.strip() for kw in exercise_search.split(",") if kw.strip()]
     if exercise_keywords:
-        filtered_df = filtered_df[filtered_df['Exercise'].apply(lambda x: any(kw.lower() in str(x).lower() for kw in exercise_keywords))]
+        filtered_df = filtered_df[filtered_df['Exercise'].apply(
+            lambda x: any(kw.lower() in str(x).lower() for kw in exercise_keywords)
+        )]
+
 if load_range != (None, None):
     filtered_df = filtered_df[filtered_df['Load (kg)'].between(load_range[0], load_range[1])]
 
 # --- Display filtered data and summary ---
 st.write("### Filtered Data", filtered_df)
+
 summary_cols = ['Set', 'Rep', 'Load (kg)']
 if has_tempo:
     summary_cols.append('Tempo')
@@ -122,14 +129,8 @@ st.download_button(
     mime="text/csv"
 )
 
-# --- PDF download ---
-def altair_chart_to_png(chart):
-    buf = BytesIO()
-    altair_saver.save(chart, buf, fmt="png")
-    buf.seek(0)
-    return buf
-
-def generate_pdf(filtered_df, chart, filters_summary):
+# --- PDF download (no chart) ---
+def generate_pdf_simple(filtered_df, filters_summary):
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", 'B', 16)
@@ -148,10 +149,6 @@ def generate_pdf(filtered_df, chart, filters_summary):
     summary_df = filtered_df[summary_cols].describe()
     for i, row in summary_df.iterrows():
         pdf.multi_cell(0, 6, f"{i}: {row.to_dict()}")
-
-    if chart:
-        chart_png = altair_chart_to_png(chart)
-        pdf.image(chart_png, x=10, y=None, w=180)
 
     output = BytesIO()
     pdf.output(output)
@@ -176,13 +173,15 @@ filters_summary += f"Load Range: {load_range[0]} - {load_range[1]} kg\n"
 
 # Show PDF download button
 if not filtered_df.empty:
-    pdf_buffer = generate_pdf(filtered_df, chart, filters_summary)
+    pdf_buffer = generate_pdf_simple(filtered_df, filters_summary)
     st.download_button(
         label="⬇️ Download PDF Report",
         data=pdf_buffer,
         file_name="athletes_report.pdf",
         mime="application/pdf"
     )
+
+
 
 
 

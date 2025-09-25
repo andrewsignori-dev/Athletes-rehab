@@ -181,20 +181,39 @@ with tab3:
 with tab4:
     st.write("### Proportion of Exercises by Family")
     if not filtered_df.empty and 'Family' in filtered_df.columns:
-        family_counts = filtered_df['Family'].value_counts().reset_index()
-        family_counts.columns = ['Family', 'Count']
-        total = family_counts['Count'].sum()
-        family_counts['Percentage'] = (family_counts['Count'] / total * 100).round(1)
+     family_counts = filtered_df['Family'].value_counts().reset_index()
+     family_counts.columns = ['Family', 'Count']
+     total = family_counts['Count'].sum()
+     family_counts['Percentage'] = (family_counts['Count'] / total * 100).round(1)
 
-        fig_pie = px.pie(
-            family_counts,
-            names='Family',
-            values='Count',
-            title='Proportion of Exercises by Family',
-            hole=0.3
-        )
-        fig_pie.update_traces(textinfo='label+percent', pull=[0.05]*len(family_counts))
-        st.plotly_chart(fig_pie, use_container_width=True)
+     fig_pie = px.pie(
+        family_counts,
+        names='Family',
+        values='Count',
+        title='Proportion of Exercises by Family',
+        hole=0.3
+    )
+
+    # Make slices "pop out" a bit
+     fig_pie.update_traces(textinfo='label+percent', pull=[0.05]*len(family_counts))
+
+    # Increase overall figure size
+     fig_pie.update_layout(
+        width=800,
+        height=800,
+        legend=dict(
+            title="Family (with %)",
+            orientation="v",  # vertical
+            x=1.05,  # move legend outside
+            y=0.5
+        ),
+        title=dict(font=dict(size=20))
+    )
+
+     st.plotly_chart(fig_pie)
+
+
+
 
 
 

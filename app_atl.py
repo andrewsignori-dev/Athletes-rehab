@@ -116,7 +116,7 @@ if not filtered_df.empty:
     # Filter only rows with that date
     last_training_df = filtered_df[filtered_df['Date'] == latest_date]
 
-    st.write(f"### 🏁 Last Training Registered (Date: {latest_date.strftime('%d-%m-%Y')})")
+    st.write(f"### Last Training Registered (Date: {latest_date.strftime('%d-%m-%Y')})")
     st.dataframe(last_training_df)
 
 st.write("### Summary Statistics")
@@ -200,6 +200,7 @@ st.download_button(
     file_name="filtered_training.csv",
     mime="text/csv"
 )
+
 
 
 

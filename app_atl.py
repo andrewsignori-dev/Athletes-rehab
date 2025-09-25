@@ -1,7 +1,12 @@
 import pandas as pd
 import streamlit as st
-from io import BytesIO
 import altair as alt
+from io import BytesIO
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+from reportlab.lib.pagesizes import A4
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet
+import matplotlib.pyplot as plt
 
 # --- Load data ---
 df = pd.read_excel("All_REHAB.xlsx")
@@ -156,6 +161,7 @@ st.download_button(
     file_name="filtered_training.csv",
     mime="text/csv"
 )
+
 
 
 

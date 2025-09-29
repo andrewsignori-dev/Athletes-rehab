@@ -59,7 +59,7 @@ if 'Load (kg)' in df.columns:
     max_load = float(df['Load (kg)'].max(skipna=True))
     load_range = st.sidebar.slider(
         "Select Load (kg) Range", 
-        min_value=0, 
+        min_value=min_load, 
         max_value=max_load, 
         value=(min_load, max_load)
     )
@@ -211,6 +211,7 @@ with tab4:
     )
 
      st.plotly_chart(fig_pie)
+
 
 
 

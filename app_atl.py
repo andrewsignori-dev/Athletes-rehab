@@ -53,18 +53,11 @@ with st.sidebar.expander("🔎 Advanced Filters"):
     code_search = st.text_input("Search Code Contains (comma separated)", "")
     exercise_search = st.text_input("Search Exercise Contains (comma separated)", "")
 
-# Load filter
-if 'Load (kg)' in df.columns:
-    min_load = float(df['Load (kg)'].min(skipna=True))
-    max_load = float(df['Load (kg)'].max(skipna=True))
-    load_range = st.sidebar.slider(
-        "Select Load (kg) Range", 
-        min_value=min_load, 
-        max_value=max_load, 
-        value=(min_load, max_load)
-    )
-else:
-    load_range = (None, None)
+# --- Load filter type ---
+load_filter_type = st.sidebar.radio(
+    "Filter by Load (kg)",
+    ("All", "With Load", "Without Load")
+)
 
 # --- Apply filters ---
 filtered_df = df.copy()
@@ -97,8 +90,23 @@ if exercise_search and 'Exercise' in filtered_df.columns:
             lambda x: any(kw.lower() in str(x).lower() for kw in exercise_keywords)
         )]
 
-# Load filter
-if load_range != (None, None):
+# --- Apply load filter ---
+if load_filter_type == "With Load":
+    filtered_df = filtered_df[filtered_df['Load (kg)'].notna()]
+elif load_filter_type == "Without Load":
+    filtered_df = filtered_df[filtered_df['Load (kg)'].isna()]
+# If "All" do nothing
+
+# Show load range slider only for "With Load"
+if load_filter_type == "With Load" and not filtered_df.empty:
+    min_load = float(filtered_df['Load (kg)'].min(skipna=True))
+    max_load = float(filtered_df['Load (kg)'].max(skipna=True))
+    load_range = st.sidebar.slider(
+        "Select Load (kg) Range",
+        min_value=min_load,
+        max_value=max_load,
+        value=(min_load, max_load)
+    )
     filtered_df = filtered_df[filtered_df['Load (kg)'].between(load_range[0], load_range[1])]
 
 # --- Metrics at the top ---
@@ -117,7 +125,7 @@ tab1, tab2, tab3, tab4 = st.tabs(["📄 Filtered Data", "📊 Summary Stats", "�
 
 with tab1:
     st.write("### Filtered Data")
-    st.dataframe(df)
+    st.dataframe(filtered_df)  # show filtered instead of full df
 
     # Last training registered
     if not filtered_df.empty:
@@ -181,36 +189,37 @@ with tab3:
 with tab4:
     st.write("### Proportion of Exercises by Family")
     if not filtered_df.empty and 'Family' in filtered_df.columns:
-     family_counts = filtered_df['Family'].value_counts().reset_index()
-     family_counts.columns = ['Family', 'Count']
-     total = family_counts['Count'].sum()
-     family_counts['Percentage'] = (family_counts['Count'] / total * 100).round(1)
+        family_counts = filtered_df['Family'].value_counts().reset_index()
+        family_counts.columns = ['Family', 'Count']
+        total = family_counts['Count'].sum()
+        family_counts['Percentage'] = (family_counts['Count'] / total * 100).round(1)
 
-     fig_pie = px.pie(
-        family_counts,
-        names='Family',
-        values='Count',
-        title='Proportion of Exercises by Family',
-        hole=0.3
-    )
+        fig_pie = px.pie(
+            family_counts,
+            names='Family',
+            values='Count',
+            title='Proportion of Exercises by Family',
+            hole=0.3
+        )
 
-    # Make slices "pop out" a bit
-     fig_pie.update_traces(textinfo='label+percent', pull=[0.05]*len(family_counts))
+        # Make slices "pop out" a bit
+        fig_pie.update_traces(textinfo='label+percent', pull=[0.05]*len(family_counts))
 
-    # Increase overall figure size
-     fig_pie.update_layout(
-        width=700,
-        height=700,
-        legend=dict(
-            title="Family (with %)",
-            orientation="v",  # vertical
-            x=1.05,  # move legend outside
-            y=0.5
-        ),
-        title=dict(font=dict(size=20))
-    )
+        # Increase overall figure size
+        fig_pie.update_layout(
+            width=700,
+            height=700,
+            legend=dict(
+                title="Family (with %)",
+                orientation="v",  # vertical
+                x=1.05,  # move legend outside
+                y=0.5
+            ),
+            title=dict(font=dict(size=20))
+        )
 
-     st.plotly_chart(fig_pie)
+        st.plotly_chart(fig_pie)
+
 
 
 

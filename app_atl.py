@@ -4,7 +4,7 @@ import plotly.express as px
 from io import BytesIO
 
 # --- Load data ---
-df = pd.read_excel("Al_data.xlsx")
+df = pd.read_excel("All.xlsx")
 
 # Clean column names
 df.columns = df.columns.str.strip()
@@ -211,6 +211,7 @@ with tab4:
     )
 
      st.plotly_chart(fig_pie)
+
 
 
 

@@ -151,7 +151,7 @@ with tab2:
         st.dataframe(filtered_df[summary_cols].describe())
 
 with tab3:
-    st.write("### Average Load Distribution Over Time by Filter Keyword")
+    st.write("### Visualize Load Trends Over Time")
     if not filtered_df.empty:
         exercise_keywords = [kw.strip() for kw in exercise_search.split(",") if kw.strip()]
 
@@ -248,6 +248,7 @@ with tab4:
         )
 
         st.plotly_chart(fig_pie)
+
 
 
 

@@ -175,6 +175,35 @@ with tab3:
         )
         st.plotly_chart(fig_bar, use_container_width=True)
 
+        # --- Monthly Boxplot with Median Trendline ---
+        filtered_df['Month'] = pd.to_datetime(filtered_df['Date']).dt.to_period('M').dt.to_timestamp()
+        fig_box = px.box(
+            filtered_df,
+            x='Month',
+            y='Load (kg)',
+            points="outliers",
+            color_discrete_sequence=['lightblue'],
+            title='Monthly Load Distribution with Median Trendline'
+        )
+
+        # Add median trendline manually
+        median_df = filtered_df.groupby('Month')['Load (kg)'].median().reset_index()
+        fig_box.add_scatter(
+            x=median_df['Month'],
+            y=median_df['Load (kg)'],
+            mode='lines+markers',
+            name='Median',
+            line=dict(color='red', dash='dash'),
+            marker=dict(symbol='circle', size=6)
+        )
+        fig_box.update_layout(
+            xaxis_title="Month",
+            yaxis_title="Load (kg)",
+            boxmode='group',
+            xaxis_tickangle=-45
+        )
+        st.plotly_chart(fig_box, use_container_width=True)
+
         # Optional: Heatmap
         heatmap = px.density_heatmap(
             load_time_df,
@@ -219,6 +248,7 @@ with tab4:
         )
 
         st.plotly_chart(fig_pie)
+
 
 
 

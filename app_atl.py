@@ -151,7 +151,7 @@ with tab1:
 
 with tab2:
     st.write("### Summary Statistics")
-    summary_cols = ['Set', 'Rep', 'Load (kg)']
+    summary_cols = ['Set', 'Rep', 'Load (kg)', 'Tempo (seconds)']
     if has_tempo:
         summary_cols.append('Tempo')
     if not filtered_df.empty:
@@ -321,6 +321,7 @@ with tab4:
 
         st.write("### Load Summary by Family")
         st.dataframe(pivot_df)
+
 
 
 

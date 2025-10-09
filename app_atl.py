@@ -301,7 +301,7 @@ with tab4:
         pivot_df.columns.name = None
 
         # Ensure columns exist and are numeric, fill missing with 0
-        for col in ['Rehab', 'S&C']:
+        for col in ['Rehabilitation', 'S&C']:
             if col not in pivot_df.columns:
                 pivot_df[col] = 0
             else:
@@ -321,6 +321,7 @@ with tab4:
 
         st.write("### Weekly Load Summary")
         st.dataframe(pivot_df)
+
 
 
 

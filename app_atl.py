@@ -307,7 +307,7 @@ with tab4:
             else:
                 pivot_df[col] = pd.to_numeric(pivot_df[col], errors='coerce').fillna(0)
 
-        pivot_df.rename(columns={'Rehab': 'Avg_Load_Rehab', 'S&C': 'Avg_Load_S&C'}, inplace=True)
+        pivot_df.rename(columns={'Rehabilitation': 'Avg_Load_Rehab', 'S&C': 'Avg_Load_S&C'}, inplace=True)
 
         # Round numeric columns
         pivot_df['Avg_Load_Rehab'] = pivot_df['Avg_Load_Rehab'].round(1)
@@ -321,6 +321,7 @@ with tab4:
 
         st.write("### Weekly Load Summary")
         st.dataframe(pivot_df)
+
 
 
 

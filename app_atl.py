@@ -256,7 +256,7 @@ with tab4:
 
         st.plotly_chart(fig_pie)
 
-         # --- Table with weekly stats ---
+       # --- Table with weekly stats ---
         filtered_df['Week'] = pd.to_datetime(filtered_df['Date']).dt.isocalendar().week
 
         # Determine grouping columns
@@ -302,6 +302,7 @@ with tab4:
         # Display table
         st.write("### Weekly Load Summary")
         st.dataframe(pivot_df)
+
 
 
 

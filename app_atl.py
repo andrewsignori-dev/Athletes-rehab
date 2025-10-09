@@ -1,74 +1,446 @@
+import pandas as pd
 import streamlit as st
-from data import load_data
-from filters import apply_filters
-from utils import filter_by_keywords
-from plots import plot_load_trends
+import plotly.express as px
+from io import BytesIO
+
+# --- Load data ---
+df = pd.read_excel("All_data.xlsx")
+
+# Clean column names
+df.columns = df.columns.str.strip()
+
+# Ensure 'Date' is datetime
+df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
+df['Date'] = df['Date'].dt.date  # YYYY-MM-DD
+
+# Ensure 'Load (kg)' is numeric
+df['Load (kg)'] = pd.to_numeric(df['Load (kg)'], errors='coerce')
+
+# Check if 'Tempo' exists
+has_tempo = 'Tempo' in df.columns
+if has_tempo:
+    df['Tempo'] = pd.to_numeric(df['Tempo'], errors='coerce')
 
 st.set_page_config(page_title="Athletes Dashboard", layout="wide")
 st.title("🏋️‍♂️ Athletes Dashboard")
 
-# --- Load Data ---
-df = load_data("All_data.xlsx")
-
-# --- Sidebar Filters ---
+# --- Sidebar filters ---
 st.sidebar.header("Filters")
+
+# Select Area 
 areas = df['Area'].dropna().unique()
 selected_areas = st.sidebar.multiselect("Select Area(s)", areas)
+
+# Name filter
 names = df['Name'].dropna().unique()
 selected_names = st.sidebar.multiselect("Select Name(s)", names)
+
+# Year filter
 years = sorted(df['Date'].apply(lambda x: x.year).dropna().unique())
 selected_year = st.sidebar.multiselect("Select Year(s)", years)
-months = sorted(df['Date'].apply(lambda x: x.month).dropna().unique())
+
+# Filter data for dynamic Month options
+df_year_filtered = df.copy()
+if selected_year:
+    df_year_filtered = df_year_filtered[df_year_filtered['Date'].apply(lambda x: x.year).isin(selected_year)]
+
+# Month filter (dynamic)
+months = sorted(df_year_filtered['Date'].apply(lambda x: x.month).dropna().unique())
 selected_month = st.sidebar.multiselect("Select Month(s)", months)
 
-# Load filter
-load_filter_type = st.sidebar.radio("Filter by Load (kg)", ["All", "With Load", "Without Load"])
-load_range = None
-if load_filter_type == "With Load":
-    min_load = float(df['Load (kg)'].min(skipna=True))
-    max_load = float(df['Load (kg)'].max(skipna=True))
-    load_range = st.sidebar.slider("Select Load (kg) Range", min_value=min_load, max_value=max_load, value=(min_load, max_load))
-
-# Family filter
-families = df['Family'].dropna().unique() if 'Family' in df.columns else []
-selected_families = st.sidebar.multiselect("Select Family(s)", families)
-
-# Keyword filters
+# Multi-keyword search filters
 with st.sidebar.expander("🔎 Advanced Filters"):
     code_search = st.text_input("Search Code Contains (comma separated)", "")
     exercise_search = st.text_input("Search Exercise Contains (comma separated)", "")
+    if 'Family' in df.columns:
+        families = df['Family'].dropna().unique()
+        selected_families = st.multiselect("Select Family(s)", families)
+
+# --- Load filter type ---
+load_filter_type = st.sidebar.radio(
+    "Filter by Load (kg)",
+    ("All", "With Load", "Without Load")
+)
 
 # --- Apply filters ---
-filtered_df = apply_filters(
-    df,
-    selected_areas,
-    selected_names,
-    selected_year,
-    selected_month,
-    load_filter_type,
-    load_range,
-    selected_families
-)
-filtered_df = filter_by_keywords(filtered_df, 'Code', [kw.strip() for kw in code_search.split(',') if kw.strip()])
-filtered_df = filter_by_keywords(filtered_df, 'Exercise', [kw.strip() for kw in exercise_search.split(',') if kw.strip()])
+filtered_df = df.copy()
 
-# --- Metrics ---
+if selected_areas:
+    filtered_df = filtered_df[filtered_df['Area'].isin(selected_areas)]
+
+if selected_names:
+    filtered_df = filtered_df[filtered_df['Name'].isin(selected_names)]
+
+if selected_year:
+    filtered_df = filtered_df[filtered_df['Date'].apply(lambda x: x.year).isin(selected_year)]
+
+if selected_month:
+    filtered_df = filtered_df[filtered_df['Date'].apply(lambda x: x.month).isin(selected_month)]
+
+# --- Code filter (multi-keyword) ---
+if code_search and 'Code' in filtered_df.columns:
+    code_keywords = [kw.strip() for kw in code_search.split(",") if kw.strip()]
+    if code_keywords:
+        filtered_df = filtered_df[filtered_df['Code'].apply(
+            lambda x: any(kw.lower() in str(x).lower() for kw in code_keywords)
+        )]
+
+# --- Exercise filter (multi-keyword) ---
+if exercise_search and 'Exercise' in filtered_df.columns:
+    exercise_keywords = [kw.strip() for kw in exercise_search.split(",") if kw.strip()]
+    if exercise_keywords:
+        filtered_df = filtered_df[filtered_df['Exercise'].apply(
+            lambda x: any(kw.lower() in str(x).lower() for kw in exercise_keywords)
+        )]
+
+# --- Apply Family filter ---
+if 'Family' in filtered_df.columns and 'selected_families' in locals() and selected_families:
+    filtered_df = filtered_df[filtered_df['Family'].isin(selected_families)]
+
+# --- Apply load filter ---
+if load_filter_type == "With Load":
+    filtered_df = filtered_df[filtered_df['Load (kg)'].notna()]
+elif load_filter_type == "Without Load":
+    filtered_df = filtered_df[filtered_df['Load (kg)'].isna()]
+# If "All" do nothing
+
+# Show load range slider only for "With Load"
+if load_filter_type == "With Load" and not filtered_df.empty:
+    min_load = float(filtered_df['Load (kg)'].min(skipna=True))
+    max_load = float(filtered_df['Load (kg)'].max(skipna=True))
+    load_range = st.sidebar.slider(
+        "Select Load (kg) Range",
+        min_value=min_load,
+        max_value=max_load,
+        value=(min_load, max_load)
+    )
+    filtered_df = filtered_df[filtered_df['Load (kg)'].between(load_range[0], load_range[1])]
+
+# --- Metrics at the top ---
+if not filtered_df.empty:
+    latest_date = filtered_df['Date'].max()
+else:
+    latest_date = pd.NaT
+
 col1, col2, col3 = st.columns(3)
-col1.metric("Total Entries", f"{len(filtered_df):,}")
+col1.metric("Total Entries", len(filtered_df))
 col2.metric("Unique Exercises", filtered_df['Exercise'].nunique() if not filtered_df.empty else 0)
-latest_date = filtered_df['Date'].max() if not filtered_df.empty else None
-col3.metric("Latest Training Date", latest_date.strftime('%d-%m-%Y') if latest_date else "-")
+col3.metric("Latest Training Date", latest_date.strftime('%d-%m-%Y') if pd.notna(latest_date) else "-")
 
 # --- Tabs ---
-tab1, tab2, tab3 = st.tabs(["📄 Filtered Data", "📊 Summary Stats", "📈 Trends"])
+tab1, tab2, tab3, tab4 = st.tabs(["📄 Filtered Data", "📊 Summary Stats", "📈 Trends", "🥧 Family Proportion"])
 
 with tab1:
-    st.dataframe(filtered_df)
+    st.write("### Filtered Data")
+    st.dataframe(filtered_df)  # show filtered instead of full df
+
+    # Last training registered
     if not filtered_df.empty:
-        st.download_button("⬇️ Download CSV", filtered_df.to_csv(index=False).encode('utf-8'), "filtered_training.csv", "text/csv")
+        last_training_df = filtered_df[filtered_df['Date'] == latest_date]
+        st.write(f"### Last Training Registered (Date: {latest_date.strftime('%d-%m-%Y')})")
+        st.dataframe(last_training_df)
+
+    # Download filtered data as CSV
+    csv_data = filtered_df.to_csv(index=False).encode('utf-8')
+    st.download_button(
+        label="⬇️ Download Filtered Data as CSV",
+        data=csv_data,
+        file_name="filtered_training.csv",
+        mime="text/csv"
+    )
+
+with tab2:
+    st.write("### Summary Statistics")
+    summary_cols = ['Set', 'Rep', 'Load (kg)', 'Tempo (seconds)']
+    if has_tempo:
+        summary_cols.append('Tempo')
+    if not filtered_df.empty:
+        st.dataframe(filtered_df[summary_cols].describe())
+
+ # --- Weekly Load Summary by Exercise Keyword ---
+    if exercise_search and 'Exercise' in filtered_df.columns:
+        exercise_keywords = [kw.strip() for kw in exercise_search.split(",") if kw.strip()]
+        if exercise_keywords:
+
+            # Filter exercises containing the keyword
+            matched_df = filtered_df[filtered_df['Exercise'].apply(
+                lambda x: any(kw.lower() in str(x).lower() for kw in exercise_keywords)
+            )].copy()
+
+            if not matched_df.empty:
+                # Week number and year
+                matched_df['Week'] = pd.to_datetime(matched_df['Date']).dt.isocalendar().week
+                matched_df['Year'] = pd.to_datetime(matched_df['Date']).dt.isocalendar().year
+
+                # Aggregate: min/max week and average load per Exercise & Area
+                group_cols = ['Exercise', 'Area']
+                agg_df = matched_df.groupby(group_cols).agg(
+                    Week_From_Num=('Week', 'min'),
+                    Week_To_Num=('Week', 'max'),
+                    Year=('Year', 'first'),
+                    Avg_Load=('Load (kg)', 'mean')
+                ).reset_index()
+
+                # Functions to convert week number to Monday/Sunday
+                def week_start_date(week, year):
+                    return pd.to_datetime(f'{year}-W{int(week)}-1', format='%G-W%V-%u')
+                def week_end_date(week, year):
+                    return pd.to_datetime(f'{year}-W{int(week)}-7', format='%G-W%V-%u')
+
+                # Convert week numbers to actual dates
+                agg_df['Week_From'] = agg_df.apply(lambda x: week_start_date(x['Week_From_Num'], x['Year']).strftime('%d-%m-%y'), axis=1)
+                agg_df['Week_To'] = agg_df.apply(lambda x: week_end_date(x['Week_To_Num'], x['Year']).strftime('%d-%m-%y'), axis=1)
+                agg_df.drop(columns=['Week_From_Num', 'Week_To_Num', 'Year'], inplace=True)
+
+                # Pivot Rehab vs S&C
+                pivot_df = agg_df.pivot_table(
+                    index=['Exercise', 'Week_From', 'Week_To'],
+                    columns='Area',
+                    values='Avg_Load',
+                    fill_value=0
+                ).reset_index()
+
+                pivot_df.columns.name = None
+
+                # Ensure columns exist and are numeric, fill missing with 0
+                for col in ['Rehabilitation', 'S&C']:
+                    if col not in pivot_df.columns:
+                        pivot_df[col] = 0
+                    else:
+                        pivot_df[col] = pd.to_numeric(pivot_df[col], errors='coerce').fillna(0)
+
+                # Rename for clarity
+                pivot_df.rename(columns={'Rehabilitation': 'Avg_Load_Rehab', 'S&C': 'Avg_Load_S&C'}, inplace=True)
+
+                # Round numeric columns
+                pivot_df['Avg_Load_Rehab'] = pivot_df['Avg_Load_Rehab'].round(1)
+                pivot_df['Avg_Load_S&C'] = pivot_df['Avg_Load_S&C'].round(1)
+
+                # Sort table
+                pivot_df = pivot_df.sort_values(by=['Exercise', 'Week_From']).reset_index(drop=True)
+
+                st.write(f"### Load Summary for Exercises containing: {', '.join(exercise_keywords)}")
+                st.dataframe(pivot_df)
+
+
 
 with tab3:
-    exercise_keywords = [kw.strip() for kw in exercise_search.split(',') if kw.strip()]
-    fig_bar, heatmap = plot_load_trends(filtered_df, exercise_keywords)
-    if fig_bar: st.plotly_chart(fig_bar, use_container_width=True)
-    if heatmap: st.plotly_chart(heatmap, use_container_width=True)
+    st.write("### Visualize Load Trends Over Time")
+    if not filtered_df.empty:
+        exercise_keywords = [kw.strip() for kw in exercise_search.split(",") if kw.strip()]
+
+        def match_keyword(ex):
+            for kw in exercise_keywords:
+                if kw.lower() in str(ex).lower():
+                    return kw
+            return "Other"
+
+        filtered_df['Exercise_Keyword'] = filtered_df['Exercise'].apply(match_keyword)
+        filtered_df['Month_Year'] = pd.to_datetime(filtered_df['Date']).dt.to_period('M').astype(str)
+        load_time_df = filtered_df.groupby(['Month_Year', 'Exercise_Keyword'])['Load (kg)'].mean().reset_index()
+
+        fig_bar = px.bar(
+            load_time_df,
+            x='Month_Year',
+            y='Load (kg)',
+            color='Exercise_Keyword',
+            barmode='group',
+            title='Average Load (kg) Over Time'
+        )
+        st.plotly_chart(fig_bar, use_container_width=True)
+
+        # --- Monthly Boxplot with Median Trendline ---
+        filtered_df['Month'] = pd.to_datetime(filtered_df['Date']).dt.to_period('M').dt.to_timestamp()
+        fig_box = px.box(
+            filtered_df,
+            x='Month',
+            y='Load (kg)',
+            points="outliers",
+            color_discrete_sequence=['lightblue'],
+            title='Monthly Load Distribution with Median Trendline'
+        )
+
+        # Add median trendline manually
+        median_df = filtered_df.groupby('Month')['Load (kg)'].median().reset_index()
+        fig_box.add_scatter(
+            x=median_df['Month'],
+            y=median_df['Load (kg)'],
+            mode='lines+markers',
+            name='Median',
+            line=dict(color='red', dash='dash'),
+            marker=dict(symbol='circle', size=6)
+        )
+        fig_box.update_layout(
+            xaxis_title="Month",
+            yaxis_title="Load (kg)",
+            boxmode='group',
+            xaxis_tickangle=-45
+        )
+        st.plotly_chart(fig_box, use_container_width=True)
+
+        # Optional: Heatmap
+        heatmap = px.density_heatmap(
+            load_time_df,
+            x='Month_Year',
+            y='Exercise_Keyword',
+            z='Load (kg)',
+            color_continuous_scale='Blues',
+            title='Heatmap of Average Load per Exercise Keyword Over Time'
+        )
+        st.plotly_chart(heatmap, use_container_width=True)
+
+with tab4:
+    st.write("### Proportion of Exercises by Family")
+    if not filtered_df.empty and 'Family' in filtered_df.columns:
+        family_counts = filtered_df['Family'].value_counts().reset_index()
+        family_counts.columns = ['Family', 'Count']
+        total = family_counts['Count'].sum()
+        family_counts['Percentage'] = (family_counts['Count'] / total * 100).round(1)
+
+        fig_pie = px.pie(
+            family_counts,
+            names='Family',
+            values='Count',
+            title='Proportion of Exercises by Family',
+            hole=0.3
+        )
+
+        # Make slices "pop out" a bit
+        fig_pie.update_traces(textinfo='label+percent', pull=[0.05]*len(family_counts))
+
+        # Increase overall figure size
+        fig_pie.update_layout(
+            width=700,
+            height=700,
+            legend=dict(
+                title="Family (with %)",
+                orientation="v",  # vertical
+                x=1.05,  # move legend outside
+                y=0.5
+            ),
+            title=dict(font=dict(size=20))
+        )
+
+        st.plotly_chart(fig_pie)
+
+        # --- Weekly Load Summary Table ---
+        filtered_df['Week'] = pd.to_datetime(filtered_df['Date']).dt.isocalendar().week
+        filtered_df['Year'] = pd.to_datetime(filtered_df['Date']).dt.isocalendar().year
+
+        group_cols = ['Family', 'Area']
+        show_exercise = 'selected_families' in locals() and selected_families
+        if show_exercise:
+            group_cols.append('Exercise')
+
+        # Aggregate: min/max week and average load
+        agg_df = filtered_df.groupby(group_cols).agg(
+            Week_From_Num=('Week', 'min'),
+            Week_To_Num=('Week', 'max'),
+            Year=('Year', 'first'),
+            Avg_Load=('Load (kg)', 'mean')
+        ).reset_index()
+
+        # Functions to convert week number to Monday/Sunday
+        def week_start_date(week, year):
+            return pd.to_datetime(f'{year}-W{int(week)}-1', format='%G-W%V-%u')
+        def week_end_date(week, year):
+            return pd.to_datetime(f'{year}-W{int(week)}-7', format='%G-W%V-%u')
+
+        # Convert week numbers to actual dates
+        agg_df['Week_From'] = agg_df.apply(lambda x: week_start_date(x['Week_From_Num'], x['Year']).strftime('%d-%m-%y'), axis=1)
+        agg_df['Week_To'] = agg_df.apply(lambda x: week_end_date(x['Week_To_Num'], x['Year']).strftime('%d-%m-%y'), axis=1)
+        agg_df.drop(columns=['Week_From_Num', 'Week_To_Num', 'Year'], inplace=True)
+
+        # Pivot Rehab vs S&C
+        if show_exercise:
+            pivot_df = agg_df.pivot_table(
+                index=['Family', 'Exercise', 'Week_From', 'Week_To'],
+                columns='Area',
+                values='Avg_Load'
+            ).reset_index()
+        else:
+            pivot_df = agg_df.pivot_table(
+                index=['Family', 'Week_From', 'Week_To'],
+                columns='Area',
+                values='Avg_Load'
+            ).reset_index()
+
+        pivot_df.columns.name = None
+
+        # Ensure columns exist and are numeric, fill missing with 0
+        for col in ['Rehabilitation', 'S&C']:
+            if col not in pivot_df.columns:
+                pivot_df[col] = 0
+            else:
+                pivot_df[col] = pd.to_numeric(pivot_df[col], errors='coerce').fillna(0)
+
+        pivot_df.rename(columns={'Rehabilitation': 'Avg_Load_Rehab', 'S&C': 'Avg_Load_S&C'}, inplace=True)
+
+        # Round numeric columns
+        pivot_df['Avg_Load_Rehab'] = pivot_df['Avg_Load_Rehab'].round(1)
+        pivot_df['Avg_Load_S&C'] = pivot_df['Avg_Load_S&C'].round(1)
+
+        # Optional: sort table for readability
+        sort_cols = ['Family', 'Week_From']
+        if show_exercise:
+            sort_cols.append('Exercise')
+        pivot_df = pivot_df.sort_values(by=sort_cols).reset_index(drop=True)
+
+        st.write("### Load Summary by Family")
+        st.dataframe(pivot_df)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

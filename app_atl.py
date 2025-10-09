@@ -244,7 +244,7 @@ with tab3:
             x='Month_Year',
             y='Load (kg)',
             color='Exercise_Keyword',
-            barmode='group',
+            barmode='relative',
             title='Average Load (kg) Over Time'
         )
         st.plotly_chart(fig_bar, use_container_width=True)
@@ -388,6 +388,7 @@ with tab4:
 
         st.write("### Load Summary by Family")
         st.dataframe(pivot_df)
+
 
 
 

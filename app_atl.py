@@ -319,8 +319,9 @@ with tab4:
             sort_cols.append('Exercise')
         pivot_df = pivot_df.sort_values(by=sort_cols).reset_index(drop=True)
 
-        st.write("### Weekly Load Summary")
+        st.write("### Load Summary by Family")
         st.dataframe(pivot_df)
+
 
 
 

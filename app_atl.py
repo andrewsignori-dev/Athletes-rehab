@@ -256,6 +256,53 @@ with tab4:
 
         st.plotly_chart(fig_pie)
 
+ # --- Table with weekly stats ---
+        # Create 'Week' column
+        filtered_df['Week'] = pd.to_datetime(filtered_df['Date']).dt.isocalendar().week
+
+        # Grouping by Family and Area (and Exercise if a Family is selected)
+        group_cols = ['Family', 'Area']
+        show_exercise = 'selected_families' in locals() and selected_families
+        if show_exercise:
+            group_cols.append('Exercise')
+
+        table_df = filtered_df.groupby(group_cols).agg(
+            Week_From=('Week', 'min'),
+            Week_To=('Week', 'max'),
+            Avg_Load=('Load (kg)', 'mean')
+        ).reset_index()
+
+        # Split Avg_Load by Area
+        if not show_exercise:
+            table_df = table_df.pivot(index='Family', columns='Area', values='Avg_Load').reset_index()
+            table_df.columns.name = None  # remove pivot hierarchy
+            # Rename columns for clarity
+            if 'Rehab' in table_df.columns:
+                table_df.rename(columns={'Rehab': 'Avg_Load_Rehab'}, inplace=True)
+            if 'S&C' in table_df.columns:
+                table_df.rename(columns={'S&C': 'Avg_Load_S&C'}, inplace=True)
+        else:
+            # If Exercise is included, create separate Avg_Load columns for Rehab and S&C
+            table_df = table_df.pivot_table(
+                index=['Family', 'Exercise', 'Week_From', 'Week_To'],
+                columns='Area',
+                values='Avg_Load'
+            ).reset_index()
+            table_df.columns.name = None
+            if 'Rehab' in table_df.columns:
+                table_df.rename(columns={'Rehab': 'Avg_Load_Rehab'}, inplace=True)
+            if 'S&C' in table_df.columns:
+                table_df.rename(columns={'S&C': 'Avg_Load_S&C'}, inplace=True)
+
+        # Round Avg_Load columns
+        for col in table_df.columns:
+            if 'Avg_Load' in col:
+                table_df[col] = table_df[col].round(1)
+
+        st.write("### Weekly Load Summary")
+        st.dataframe(table_df)
+
+
 
 
 

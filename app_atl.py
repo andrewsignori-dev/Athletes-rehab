@@ -52,6 +52,9 @@ selected_month = st.sidebar.multiselect("Select Month(s)", months)
 with st.sidebar.expander("🔎 Advanced Filters"):
     code_search = st.text_input("Search Code Contains (comma separated)", "")
     exercise_search = st.text_input("Search Exercise Contains (comma separated)", "")
+    if 'Family' in df.columns:
+        families = df['Family'].dropna().unique()
+        selected_families = st.multiselect("Select Family(s)", families)
 
 # --- Load filter type ---
 load_filter_type = st.sidebar.radio(
@@ -89,6 +92,10 @@ if exercise_search and 'Exercise' in filtered_df.columns:
         filtered_df = filtered_df[filtered_df['Exercise'].apply(
             lambda x: any(kw.lower() in str(x).lower() for kw in exercise_keywords)
         )]
+
+# --- Apply Family filter ---
+if 'Family' in filtered_df.columns and 'selected_families' in locals() and selected_families:
+    filtered_df = filtered_df[filtered_df['Family'].isin(selected_families)]
 
 # --- Apply load filter ---
 if load_filter_type == "With Load":
@@ -248,6 +255,7 @@ with tab4:
         )
 
         st.plotly_chart(fig_pie)
+
 
 
 

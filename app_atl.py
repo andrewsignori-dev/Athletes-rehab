@@ -256,23 +256,35 @@ with tab4:
 
         st.plotly_chart(fig_pie)
 
-       # --- Table with weekly stats ---
+             # --- Weekly Load Summary Table ---
         filtered_df['Week'] = pd.to_datetime(filtered_df['Date']).dt.isocalendar().week
+        filtered_df['Year'] = pd.to_datetime(filtered_df['Date']).dt.isocalendar().year
 
-        # Determine grouping columns
         group_cols = ['Family', 'Area']
         show_exercise = 'selected_families' in locals() and selected_families
         if show_exercise:
             group_cols.append('Exercise')
 
-        # Aggregate including Week_From and Week_To
+        # Aggregate: min/max week and average load
         agg_df = filtered_df.groupby(group_cols).agg(
-            Week_From=('Week', 'min'),
-            Week_To=('Week', 'max'),
+            Week_From_Num=('Week', 'min'),
+            Week_To_Num=('Week', 'max'),
+            Year=('Year', 'first'),
             Avg_Load=('Load (kg)', 'mean')
         ).reset_index()
 
-        # Pivot to separate Rehab and S&C
+        # Functions to convert week number to Monday/Sunday
+        def week_start_date(week, year):
+            return pd.to_datetime(f'{year}-W{int(week)}-1', format='%G-W%V-%u')
+        def week_end_date(week, year):
+            return pd.to_datetime(f'{year}-W{int(week)}-7', format='%G-W%V-%u')
+
+        # Convert week numbers to actual dates
+        agg_df['Week_From'] = agg_df.apply(lambda x: week_start_date(x['Week_From_Num'], x['Year']).strftime('%d-%m-%y'), axis=1)
+        agg_df['Week_To'] = agg_df.apply(lambda x: week_end_date(x['Week_To_Num'], x['Year']).strftime('%d-%m-%y'), axis=1)
+        agg_df.drop(columns=['Week_From_Num', 'Week_To_Num', 'Year'], inplace=True)
+
+        # Pivot Rehab vs S&C
         if show_exercise:
             pivot_df = agg_df.pivot_table(
                 index=['Family', 'Exercise', 'Week_From', 'Week_To'],
@@ -286,26 +298,30 @@ with tab4:
                 values='Avg_Load'
             ).reset_index()
 
-        pivot_df.columns.name = None  # remove hierarchy
+        pivot_df.columns.name = None
 
-        # Ensure Avg_Load columns always exist
+        # Ensure columns exist and are numeric, fill missing with 0
         for col in ['Rehab', 'S&C']:
             if col not in pivot_df.columns:
                 pivot_df[col] = 0
             else:
-                # Convert to numeric safely and fill missing with 0
                 pivot_df[col] = pd.to_numeric(pivot_df[col], errors='coerce').fillna(0)
-
 
         pivot_df.rename(columns={'Rehab': 'Avg_Load_Rehab', 'S&C': 'Avg_Load_S&C'}, inplace=True)
 
-        # Round Avg_Load columns
-        for col in ['Avg_Load_Rehab', 'Avg_Load_S&C']:
-            pivot_df[col] = pivot_df[col].round(1)
+        # Round numeric columns
+        pivot_df['Avg_Load_Rehab'] = pivot_df['Avg_Load_Rehab'].round(1)
+        pivot_df['Avg_Load_S&C'] = pivot_df['Avg_Load_S&C'].round(1)
 
-        # Display table
+        # Optional: sort table for readability
+        sort_cols = ['Family', 'Week_From']
+        if show_exercise:
+            sort_cols.append('Exercise')
+        pivot_df = pivot_df.sort_values(by=sort_cols).reset_index(drop=True)
+
         st.write("### Weekly Load Summary")
         st.dataframe(pivot_df)
+
 
 
 

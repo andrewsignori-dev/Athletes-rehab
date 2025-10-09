@@ -225,7 +225,7 @@ with tab2:
 
 
 with tab3:
-    st.write("### Visualize Load Trends Over Time")
+    st.write("### Visualize Mean Load Trends Over Time")
     if not filtered_df.empty:
         exercise_keywords = [kw.strip() for kw in exercise_search.split(",") if kw.strip()]
 
@@ -388,6 +388,7 @@ with tab4:
 
         st.write("### Load Summary by Family")
         st.dataframe(pivot_df)
+
 
 
 

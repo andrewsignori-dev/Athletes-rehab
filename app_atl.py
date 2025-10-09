@@ -291,7 +291,11 @@ with tab4:
         # Ensure Avg_Load columns always exist
         for col in ['Rehab', 'S&C']:
             if col not in pivot_df.columns:
-                pivot_df[col] = None
+                pivot_df[col] = 0
+            else:
+                # Convert to numeric safely and fill missing with 0
+                pivot_df[col] = pd.to_numeric(pivot_df[col], errors='coerce').fillna(0)
+
 
         pivot_df.rename(columns={'Rehab': 'Avg_Load_Rehab', 'S&C': 'Avg_Load_S&C'}, inplace=True)
 
@@ -302,6 +306,7 @@ with tab4:
         # Display table
         st.write("### Weekly Load Summary")
         st.dataframe(pivot_df)
+
 
 
 

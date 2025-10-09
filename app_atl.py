@@ -157,6 +157,73 @@ with tab2:
     if not filtered_df.empty:
         st.dataframe(filtered_df[summary_cols].describe())
 
+ # --- Weekly Load Summary by Exercise Keyword ---
+    if exercise_search and 'Exercise' in filtered_df.columns:
+        exercise_keywords = [kw.strip() for kw in exercise_search.split(",") if kw.strip()]
+        if exercise_keywords:
+
+            # Filter exercises containing the keyword
+            matched_df = filtered_df[filtered_df['Exercise'].apply(
+                lambda x: any(kw.lower() in str(x).lower() for kw in exercise_keywords)
+            )].copy()
+
+            if not matched_df.empty:
+                # Week number and year
+                matched_df['Week'] = pd.to_datetime(matched_df['Date']).dt.isocalendar().week
+                matched_df['Year'] = pd.to_datetime(matched_df['Date']).dt.isocalendar().year
+
+                # Aggregate: min/max week and average load per Exercise & Area
+                group_cols = ['Exercise', 'Area']
+                agg_df = matched_df.groupby(group_cols).agg(
+                    Week_From_Num=('Week', 'min'),
+                    Week_To_Num=('Week', 'max'),
+                    Year=('Year', 'first'),
+                    Avg_Load=('Load (kg)', 'mean')
+                ).reset_index()
+
+                # Functions to convert week number to Monday/Sunday
+                def week_start_date(week, year):
+                    return pd.to_datetime(f'{year}-W{int(week)}-1', format='%G-W%V-%u')
+                def week_end_date(week, year):
+                    return pd.to_datetime(f'{year}-W{int(week)}-7', format='%G-W%V-%u')
+
+                # Convert week numbers to actual dates
+                agg_df['Week_From'] = agg_df.apply(lambda x: week_start_date(x['Week_From_Num'], x['Year']).strftime('%d-%m-%y'), axis=1)
+                agg_df['Week_To'] = agg_df.apply(lambda x: week_end_date(x['Week_To_Num'], x['Year']).strftime('%d-%m-%y'), axis=1)
+                agg_df.drop(columns=['Week_From_Num', 'Week_To_Num', 'Year'], inplace=True)
+
+                # Pivot Rehab vs S&C
+                pivot_df = agg_df.pivot_table(
+                    index=['Exercise', 'Week_From', 'Week_To'],
+                    columns='Area',
+                    values='Avg_Load',
+                    fill_value=0
+                ).reset_index()
+
+                pivot_df.columns.name = None
+
+                # Ensure columns exist and are numeric, fill missing with 0
+                for col in ['Rehabilitation', 'S&C']:
+                    if col not in pivot_df.columns:
+                        pivot_df[col] = 0
+                    else:
+                        pivot_df[col] = pd.to_numeric(pivot_df[col], errors='coerce').fillna(0)
+
+                # Rename for clarity
+                pivot_df.rename(columns={'Rehabilitation': 'Avg_Load_Rehab', 'S&C': 'Avg_Load_S&C'}, inplace=True)
+
+                # Round numeric columns
+                pivot_df['Avg_Load_Rehab'] = pivot_df['Avg_Load_Rehab'].round(1)
+                pivot_df['Avg_Load_S&C'] = pivot_df['Avg_Load_S&C'].round(1)
+
+                # Sort table
+                pivot_df = pivot_df.sort_values(by=['Exercise', 'Week_From']).reset_index(drop=True)
+
+                st.write(f"### Load Summary for Exercises containing: {', '.join(exercise_keywords)}")
+                st.dataframe(pivot_df)
+
+
+
 with tab3:
     st.write("### Visualize Load Trends Over Time")
     if not filtered_df.empty:
@@ -256,7 +323,7 @@ with tab4:
 
         st.plotly_chart(fig_pie)
 
-             # --- Weekly Load Summary Table ---
+        # --- Weekly Load Summary Table ---
         filtered_df['Week'] = pd.to_datetime(filtered_df['Date']).dt.isocalendar().week
         filtered_df['Year'] = pd.to_datetime(filtered_df['Date']).dt.isocalendar().year
 
@@ -321,6 +388,7 @@ with tab4:
 
         st.write("### Load Summary by Family")
         st.dataframe(pivot_df)
+
 
 
 

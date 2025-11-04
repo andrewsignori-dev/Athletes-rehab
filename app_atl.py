@@ -499,11 +499,21 @@ with tab5:
         st.subheader("Filters")
 
         available_names = sorted(filtered_df['Name'].dropna().unique())
-        selected_name = st.selectbox("Select Athlete", available_names)
+        selected_name = st.selectbox(
+            "Select Athlete", 
+            available_names, 
+            key="competition_name_select"
+        )
 
         df_name_filtered = filtered_df[filtered_df['Name'] == selected_name]
         available_years = sorted(pd.to_datetime(df_name_filtered['Date']).dt.year.dropna().unique())
-        selected_years = st.multiselect("Select Year(s)", available_years, default=available_years[-1:])
+
+        selected_years = st.multiselect(
+            "Select Year(s)", 
+            available_years, 
+            default=available_years[-1:], 
+            key="competition_year_select"
+        )
 
         # --- Filter Data ---
         df_selected = df_name_filtered[
@@ -559,27 +569,28 @@ with tab5:
                     label="⬇️ Download Competition Data for Selection",
                     data=comp_csv,
                     file_name=f"competition_{selected_name}_{selected_years_str}.csv",
-                    mime="text/csv"
+                    mime="text/csv",
+                    key="competition_download_button"
                 )
-
 
                 # --- 📊 Bar Plot of Competition Scores ---
                 st.write("### 📊 Competition Positioning Over Time")
 
-                # Add highlight colors
-                df_display['Color'] = 'rgba(66, 135, 245, 0.8)'  # blue default
-                #df_display.loc[df_display['Date'] == best_row['Date'], 'Color'] = 'green'
-                #df_display.loc[df_display['Date'] == worst_row['Date'], 'Color'] = 'crimson'
+                df_display['Highlight'] = 'Normal'
+                df_display.loc[df_display['Date'] == best_row['Date'], 'Highlight'] = 'Best'
+                df_display.loc[df_display['Date'] == worst_row['Date'], 'Highlight'] = 'Worst'
+
+                color_map = {'Normal': 'rgba(66, 135, 245, 0.8)', 'Best': 'green', 'Worst': 'crimson'}
 
                 fig_bar = px.bar(
                     df_display,
                     x='Date',
                     y='Competition (positioning)',
+                    color='Highlight',
+                    color_discrete_map=color_map,
                     text='Competition (positioning)',
                     title=f"Competition Results - {selected_name}",
-                    labels={'Competition (positioning)': 'Position (Lower = Better)'},
-                    color='Color',
-                    color_discrete_map="identity"
+                    labels={'Competition (positioning)': 'Position (Lower = Better)'}
                 )
 
                 fig_bar.update_traces(textposition='outside')
@@ -587,12 +598,10 @@ with tab5:
                 fig_bar.update_layout(
                     xaxis_title="Date",
                     yaxis_title="Competition Positioning",
-                    showlegend=False,
+                    showlegend=True,
                     height=500
                 )
                 st.plotly_chart(fig_bar, use_container_width=True)
-
-
 
 
 

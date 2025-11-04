@@ -390,7 +390,60 @@ with tab4:
         st.dataframe(pivot_df)
 
 with tab5:
-    st.write("### Competition Analyser")
+    st.write("### 🏆 Competition Analyser")
+
+    # --- Check necessary columns ---
+    required_cols = ['Name', 'Date', 'Competition (positioning)']
+    if not all(col in filtered_df.columns for col in required_cols):
+        st.warning("Missing one or more required columns: Name, Date, or Competition (positioning)")
+    elif filtered_df.empty:
+        st.info("No data available for competition analysis. Please adjust your filters.")
+    else:
+        # --- Filters for Name and Year ---
+        st.subheader("Filters")
+
+        available_names = sorted(filtered_df['Name'].dropna().unique())
+        selected_name = st.selectbox("Select Athlete", available_names)
+
+        df_name_filtered = filtered_df[filtered_df['Name'] == selected_name]
+        available_years = sorted(pd.to_datetime(df_name_filtered['Date']).dt.year.dropna().unique())
+        selected_year = st.selectbox("Select Year", available_years)
+
+        # --- Filter Data ---
+        df_selected = df_name_filtered[
+            pd.to_datetime(df_name_filtered['Date']).dt.year == selected_year
+        ].copy()
+
+        if df_selected.empty:
+            st.info("No competition records found for this athlete and year.")
+        else:
+            # Ensure numeric Competition Positioning
+            df_selected['Competition (positioning)'] = pd.to_numeric(
+                df_selected['Competition (positioning)'], errors='coerce'
+            )
+
+            # Remove NaN competition results
+            df_selected = df_selected.dropna(subset=['Competition (positioning)'])
+
+            if df_selected.empty:
+                st.info("No valid competition positioning data available.")
+            else:
+                # --- Identify Best and Worst ---
+                best_row = df_selected.loc[df_selected['Competition (positioning)'].idxmin()]
+                worst_row = df_selected.loc[df_selected['Competition (positioning)'].idxmax()]
+
+                st.markdown(f"""
+                #### 🥇 Best Performance  
+                **Date:** {best_row['Date']}  
+                **Competition Positioning:** {int(best_row['Competition (positioning)'])}
+                """)
+
+                st.markdown(f"""
+                #### 🥈 Worst Performance  
+                **Date:** {worst_row['Date']}  
+                **Competition Positioning:** {int(worst_row['Competition (positioning)'])}
+                """)
+
 
 
 

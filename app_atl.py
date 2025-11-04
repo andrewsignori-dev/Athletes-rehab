@@ -449,19 +449,6 @@ with tab5:
                 df_display = (df_selected[['Name', 'Date', 'Competition (positioning)']].drop_duplicates(subset=['Name', 'Date', 'Competition (positioning)']).sort_values(by='Date'))
                 st.dataframe(df_display, use_container_width=True)
 
-                # --- Performance Over Time ---
-                fig = px.line(
-                    df_display,
-                    x='Date',
-                    y='Competition (positioning)',
-                    markers=True,
-                    title=f"Competition Positioning Over Time - {selected_name}",
-                    labels={'Competition (positioning)': 'Position (Lower = Better)'},
-                    color='Year'
-                )
-                fig.update_yaxes(autorange="reversed")  # Lower = better
-                st.plotly_chart(fig, use_container_width=True)
-
                 # --- Download Filtered Data ---
                 selected_years_str = "_".join(map(str, selected_years))
                 comp_csv = df_display.to_csv(index=False).encode('utf-8')
@@ -471,6 +458,7 @@ with tab5:
                     file_name=f"competition_{selected_name}_{selected_years_str}.csv",
                     mime="text/csv"
                 )
+
 
 
 

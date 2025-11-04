@@ -422,15 +422,23 @@ with tab5:
                 df_selected['Competition (positioning)'], errors='coerce'
             )
 
-            # Remove NaN competition results
+            # Clean data
             df_selected = df_selected.dropna(subset=['Competition (positioning)'])
+            df_selected['Date'] = pd.to_datetime(df_selected['Date']).dt.date
 
-            if df_selected.empty:
+            # --- Deduplicate competitions (keep one row per competition per date) ---
+            df_display = (
+                df_selected[['Name', 'Date', 'Competition (positioning)']]
+                .drop_duplicates(subset=['Name', 'Date', 'Competition (positioning)'])
+                .sort_values(by='Date')
+            )
+
+            if df_display.empty:
                 st.info("No valid competition positioning data available.")
             else:
                 # --- Identify Best and Worst ---
-                best_row = df_selected.loc[df_selected['Competition (positioning)'].idxmin()]
-                worst_row = df_selected.loc[df_selected['Competition (positioning)'].idxmax()]
+                best_row = df_display.loc[df_display['Competition (positioning)'].idxmin()]
+                worst_row = df_display.loc[df_display['Competition (positioning)'].idxmax()]
 
                 st.markdown(f"""
                 #### 🥇 Best Performance  
@@ -446,7 +454,102 @@ with tab5:
 
                 # --- Display Filtered Dataset ---
                 st.write("### 📋 Competition Results Table")
-                df_display = (df_selected[['Name', 'Date', 'Competition (positioning)']].drop_duplicates(subset=['Name', 'Date', 'Competition (positioning)']).sort_values(by='Date'))
+                st.dataframe(df_display, use_container_width=True)
+
+                # --- 📊 Bar Plot of Competition Scores ---
+                st.write("### 📊 Competition Positioning Over Time")
+
+                # Add highlight colors
+                df_display['Color'] = 'rgba(66, 135, 245, 0.8)'  # blue default
+                df_display.loc[df_display['Date'] == best_row['Date'], 'Color'] = 'gold'
+                df_display.loc[df_display['Date'] == worst_row['Date'], 'Color'] = 'crimson'
+
+                fig_bar = px.bar(
+                    df_display,
+                    x='Date',
+                    y='Competition (positioning)',
+                    text='Competition (positioning)',
+                    title=f"Competition Results - {selected_name}",
+                    labels={'Competition (positioning)': 'Position (Lower = Better)'},
+                    color='Color',
+                    color_discrete_map="identity"
+                )
+
+                fig_bar.update_traces(textposition='outside')
+                fig_bar.update_yaxes(autorange='reversed')  # Lower = better
+                fig_bar.update_layout(
+                    xaxis_title="Date",
+                    yaxis_title="Competition Positioning",
+                    showlegend=False,
+                    height=500
+                )
+                st.plotly_chart(fig_bar, use_container_width=True)
+
+with tab5:
+    st.write("### 🏆 Competition Analyser")
+
+    # --- Check necessary columns ---
+    required_cols = ['Name', 'Date', 'Competition (positioning)']
+    if not all(col in filtered_df.columns for col in required_cols):
+        st.warning("Missing one or more required columns: Name, Date, or Competition (positioning)")
+    elif filtered_df.empty:
+        st.info("No data available for competition analysis. Please adjust your filters.")
+    else:
+        # --- Filters for Name and Year ---
+        st.subheader("Filters")
+
+        available_names = sorted(filtered_df['Name'].dropna().unique())
+        selected_name = st.selectbox("Select Athlete", available_names)
+
+        df_name_filtered = filtered_df[filtered_df['Name'] == selected_name]
+        available_years = sorted(pd.to_datetime(df_name_filtered['Date']).dt.year.dropna().unique())
+        selected_years = st.multiselect("Select Year(s)", available_years, default=available_years[-1:])
+
+        # --- Filter Data ---
+        df_selected = df_name_filtered[
+            pd.to_datetime(df_name_filtered['Date']).dt.year.isin(selected_years)
+        ].copy()
+
+        if df_selected.empty:
+            st.info("No competition records found for this athlete and selected year(s).")
+        else:
+            # Ensure numeric Competition Positioning
+            df_selected['Competition (positioning)'] = pd.to_numeric(
+                df_selected['Competition (positioning)'], errors='coerce'
+            )
+
+            # Clean data
+            df_selected = df_selected.dropna(subset=['Competition (positioning)'])
+            df_selected['Date'] = pd.to_datetime(df_selected['Date']).dt.date
+
+            # --- Deduplicate competitions (keep one row per competition per date) ---
+            df_display = (
+                df_selected[['Name', 'Date', 'Competition (positioning)']]
+                .drop_duplicates(subset=['Name', 'Date', 'Competition (positioning)'])
+                .sort_values(by='Date')
+            )
+
+            if df_display.empty:
+                st.info("No valid competition positioning data available.")
+            else:
+                # --- Identify Best and Worst ---
+                best_row = df_display.loc[df_display['Competition (positioning)'].idxmin()]
+                worst_row = df_display.loc[df_display['Competition (positioning)'].idxmax()]
+
+                st.markdown(f"""
+                #### 🥇 Best Performance  
+                **Date:** {best_row['Date']}  
+                **Competition Positioning:** {int(best_row['Competition (positioning)'])}
+                """)
+
+                st.markdown(f"""
+                #### 🥈 Worst Performance  
+                **Date:** {worst_row['Date']}  
+                **Competition Positioning:** {int(worst_row['Competition (positioning)'])}
+                """)
+
+                # --- Display Filtered Dataset ---
+                st.write("### 📋 Competition Results Table")
                 st.dataframe(df_display, use_container_width=True)
 
                 # --- Download Filtered Data ---
@@ -459,9 +562,13 @@ with tab5:
                     mime="text/csv"
                 )
 
-                
                 # --- 📊 Bar Plot of Competition Scores ---
                 st.write("### 📊 Competition Positioning Over Time")
+
+                # Add highlight colors
+                df_display['Color'] = 'rgba(66, 135, 245, 0.8)'  # blue default
+                df_display.loc[df_display['Date'] == best_row['Date'], 'Color'] = 'gold'
+                df_display.loc[df_display['Date'] == worst_row['Date'], 'Color'] = 'crimson'
 
                 fig_bar = px.bar(
                     df_display,
@@ -470,6 +577,8 @@ with tab5:
                     text='Competition (positioning)',
                     title=f"Competition Results - {selected_name}",
                     labels={'Competition (positioning)': 'Position (Lower = Better)'},
+                    color='Color',
+                    color_discrete_map="identity"
                 )
 
                 fig_bar.update_traces(textposition='outside')
@@ -481,6 +590,9 @@ with tab5:
                     height=500
                 )
                 st.plotly_chart(fig_bar, use_container_width=True)
+
+
+
 
 
 

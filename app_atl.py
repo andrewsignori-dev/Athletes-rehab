@@ -443,10 +443,21 @@ with tab5:
                 **Date:** {worst_row['Date']}  
                 **Competition Positioning:** {int(worst_row['Competition (positioning)'])}
                 """)
+                
+                # --- Display Filtered Dataset ---
+                st.write("### 📋 Competition Results Table")
+                df_display = df_selected[['Name', 'Date', 'Competition (positioning0']].copy()
+                df_display = df_display.sort_values(by='Date')
+                st.dataframe(df_display, use_container_width=True)
 
-
-
-
+                # --- Download Filtered Data ---
+                comp_csv = df_display.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    label="⬇️ Download Competition Data for Selection",
+                    data=comp_csv,
+                    file_name=f"competition_{selected_name}_{selected_year}.csv",
+                    mime="text/csv"
+                )
 
 
 

@@ -459,6 +459,30 @@ with tab5:
                     mime="text/csv"
                 )
 
+                
+                # --- 📊 Bar Plot of Competition Scores ---
+                st.write("### 📊 Competition Positioning Over Time")
+
+                fig_bar = px.bar(
+                    df_display,
+                    x='Date',
+                    y='Competition (positioning)',
+                    text='Competition (positioning)',
+                    title=f"Competition Results - {selected_name}",
+                    labels={'Competition (positioning)': 'Position (Lower = Better)'},
+                )
+
+                fig_bar.update_traces(textposition='outside')
+                fig_bar.update_yaxes(autorange='reversed')  # Lower = better
+                fig_bar.update_layout(
+                    xaxis_title="Date",
+                    yaxis_title="Competition Positioning",
+                    showlegend=False,
+                    height=500
+                )
+                st.plotly_chart(fig_bar, use_container_width=True)
+
+
 
 
 

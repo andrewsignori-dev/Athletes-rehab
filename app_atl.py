@@ -552,22 +552,12 @@ with tab5:
                 st.write("### 📋 Competition Results Table")
                 st.dataframe(df_display, use_container_width=True)
 
-                # --- Download Filtered Data ---
-                selected_years_str = "_".join(map(str, selected_years))
-                comp_csv = df_display.to_csv(index=False).encode('utf-8')
-                st.download_button(
-                    label="⬇️ Download Competition Data for Selection",
-                    data=comp_csv,
-                    file_name=f"competition_{selected_name}_{selected_years_str}.csv",
-                    mime="text/csv"
-                )
-
                 # --- 📊 Bar Plot of Competition Scores ---
                 st.write("### 📊 Competition Positioning Over Time")
 
                 # Add highlight colors
                 df_display['Color'] = 'rgba(66, 135, 245, 0.8)'  # blue default
-                df_display.loc[df_display['Date'] == best_row['Date'], 'Color'] = 'gold'
+                df_display.loc[df_display['Date'] == best_row['Date'], 'Color'] = 'green'
                 df_display.loc[df_display['Date'] == worst_row['Date'], 'Color'] = 'crimson'
 
                 fig_bar = px.bar(
@@ -590,6 +580,9 @@ with tab5:
                     height=500
                 )
                 st.plotly_chart(fig_bar, use_container_width=True)
+
+
+
 
 
 

@@ -446,9 +446,7 @@ with tab5:
 
                 # --- Display Filtered Dataset ---
                 st.write("### 📋 Competition Results Table")
-                df_display = df_selected[['Name', 'Date', 'Competition (positioning)']].copy()
-                df_display['Year'] = pd.to_datetime(df_display['Date']).dt.year
-                df_display = df_display.sort_values(by='Date')
+                df_display = (df_selected[['Name', 'Date', 'Competition (positioning)']].drop_duplicates(subset=['Name', 'Date', 'Competition (positioning)']).sort_values(by='Date'))
                 st.dataframe(df_display, use_container_width=True)
 
                 # --- Performance Over Time ---
@@ -473,6 +471,7 @@ with tab5:
                     file_name=f"competition_{selected_name}_{selected_years_str}.csv",
                     mime="text/csv"
                 )
+
 
 
 

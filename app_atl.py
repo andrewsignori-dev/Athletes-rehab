@@ -407,15 +407,15 @@ with tab5:
 
         df_name_filtered = filtered_df[filtered_df['Name'] == selected_name]
         available_years = sorted(pd.to_datetime(df_name_filtered['Date']).dt.year.dropna().unique())
-        selected_year = st.selectbox("Select Year", available_years)
+        selected_years = st.multiselect("Select Year(s)", available_years, default=available_years[-1:])
 
         # --- Filter Data ---
         df_selected = df_name_filtered[
-            pd.to_datetime(df_name_filtered['Date']).dt.year == selected_year
+            pd.to_datetime(df_name_filtered['Date']).dt.year.isin(selected_years)
         ].copy()
 
         if df_selected.empty:
-            st.info("No competition records found for this athlete and year.")
+            st.info("No competition records found for this athlete and selected year(s).")
         else:
             # Ensure numeric Competition Positioning
             df_selected['Competition (positioning)'] = pd.to_numeric(
@@ -443,21 +443,38 @@ with tab5:
                 **Date:** {worst_row['Date']}  
                 **Competition Positioning:** {int(worst_row['Competition (positioning)'])}
                 """)
-                
+
                 # --- Display Filtered Dataset ---
                 st.write("### 📋 Competition Results Table")
                 df_display = df_selected[['Name', 'Date', 'Competition (positioning)']].copy()
+                df_display['Year'] = pd.to_datetime(df_display['Date']).dt.year
                 df_display = df_display.sort_values(by='Date')
                 st.dataframe(df_display, use_container_width=True)
 
+                # --- Performance Over Time ---
+                fig = px.line(
+                    df_display,
+                    x='Date',
+                    y='Competition (positioning)',
+                    markers=True,
+                    title=f"Competition Positioning Over Time - {selected_name}",
+                    labels={'Competition (positioning)': 'Position (Lower = Better)'},
+                    color='Year'
+                )
+                fig.update_yaxes(autorange="reversed")  # Lower = better
+                st.plotly_chart(fig, use_container_width=True)
+
                 # --- Download Filtered Data ---
+                selected_years_str = "_".join(map(str, selected_years))
                 comp_csv = df_display.to_csv(index=False).encode('utf-8')
                 st.download_button(
                     label="⬇️ Download Competition Data for Selection",
                     data=comp_csv,
-                    file_name=f"competition_{selected_name}_{selected_year}.csv",
+                    file_name=f"competition_{selected_name}_{selected_years_str}.csv",
                     mime="text/csv"
                 )
+
+
 
 
 

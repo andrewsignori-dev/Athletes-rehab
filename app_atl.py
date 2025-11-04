@@ -446,7 +446,7 @@ with tab5:
                 
                 # --- Display Filtered Dataset ---
                 st.write("### 📋 Competition Results Table")
-                df_display = df_selected[['Name', 'Date', 'Competition (positioning0']].copy()
+                df_display = df_selected[['Name', 'Date', 'Competition (positioning)']].copy()
                 df_display = df_display.sort_values(by='Date')
                 st.dataframe(df_display, use_container_width=True)
 
@@ -458,6 +458,7 @@ with tab5:
                     file_name=f"competition_{selected_name}_{selected_year}.csv",
                     mime="text/csv"
                 )
+
 
 
 

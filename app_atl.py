@@ -128,7 +128,7 @@ col2.metric("Unique Exercises", filtered_df['Exercise'].nunique() if not filtere
 col3.metric("Latest Training Date", latest_date.strftime('%d-%m-%Y') if pd.notna(latest_date) else "-")
 
 # --- Tabs ---
-tab1, tab2, tab3, tab4 = st.tabs(["📄 Filtered Data", "📊 Summary Stats", "📈 Trends", "🥧 Family Proportion"])
+tab1, tab2, tab3, tab4 = st.tabs(["📄 Filtered Data", "📊 Summary Stats", "📈 Trends", "🥧 Family Proportion", "🏆 Competition Analyser"])
 
 with tab1:
     st.write("### Filtered Data")
@@ -389,6 +389,8 @@ with tab4:
         st.write("### Load Summary by Family")
         st.dataframe(pivot_df)
 
+with tab5:
+    st.write("### Competition Analyser")
 
 
 

@@ -584,11 +584,11 @@ with tab6:
                 'Competition_Date': end_date.date(),
                 'Competition_Position': comp_values[i],
                 'Mean_Workload': round(mean_workload, 2),
-                'Workload_SD': round(workload_sd, 2) if pd.notna(workload_sd) else np.nan,
+                'Workload_SD': round(workload_sd, 2) if pd.notna(workload_sd) else float('nan'),
                 'Last_Week_Workload': round(last_week_workload, 2),
-                'Workload_Trend': round(workload_trend, 2) if pd.notna(workload_trend) else np.nan,
-                'Max_to_Min_Ratio': round(max_to_min_ratio, 2) if pd.notna(max_to_min_ratio) else np.nan,
-                'Pct_Change_Last2Weeks': round(pct_change_last2, 2) if pd.notna(pct_change_last2) else np.nan,
+                'Workload_Trend': round(workload_trend, 2) if pd.notna(workload_trend) else float('nan'),
+                'Max_to_Min_Ratio': round(max_to_min_ratio, 2) if pd.notna(max_to_min_ratio) else float('nan'),
+                'Pct_Change_Last2Weeks': round(pct_change_last2, 2) if pd.notna(pct_change_last2) else float('nan'),
                 'Weeks_counted': len(pre_period)
             }
 
@@ -618,6 +618,7 @@ with tab6:
         )
     else:
         st.info("No valid training pattern data found for the selected athlete.")
+
 
 
 

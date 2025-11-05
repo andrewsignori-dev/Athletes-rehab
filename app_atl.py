@@ -576,7 +576,7 @@ with tab6:
                     / pre_period.iloc[-2]['Workload'] * 100
                 )
             else:
-                pct_change_last2 = np.nan
+                pct_change_last2 = float('nan')
 
             # Append result
             pattern = {
@@ -618,6 +618,7 @@ with tab6:
         )
     else:
         st.info("No valid training pattern data found for the selected athlete.")
+
 
 
 

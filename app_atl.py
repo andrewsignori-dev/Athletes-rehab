@@ -501,9 +501,9 @@ with tab6:
     st.write("### 🏆 Competition Predictor - S&C")
 
     # --- Filter by Area and Athlete ---
-    filtered_area = st.selectbox("Select Area", ['S&C', 'Competition'], key="area_select_snc_clean")
+    filtered_area = st.selectbox("Select Area", ['S&C', 'Competition'], key="area_select_snc_final")
     available_names = sorted(df['Name'].dropna().unique())
-    selected_name = st.selectbox("Select Athlete", available_names, key=f"competition_name_select_clean_{filtered_area}")
+    selected_name = st.selectbox("Select Athlete", available_names, key=f"competition_name_select_final_{filtered_area}")
 
     # --- Data Preparation ---
     df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
@@ -519,7 +519,11 @@ with tab6:
     if not df_snc.empty:
         df_snc['Workload'] = df_snc['Set'] * df_snc['Rep'] * df_snc['Load (kg)']
         df_snc['Week from'] = (df_snc['Date'] - pd.to_timedelta(df_snc['Date'].dt.weekday, unit='d')).dt.normalize()
-        df_weekly = df_snc.dropna(subset=['Workload', 'Week from']).groupby('Week from', as_index=False)['Workload'].mean()
+        df_weekly = (
+            df_snc.dropna(subset=['Workload', 'Week from'])
+            .groupby('Week from', as_index=False)['Workload']
+            .mean()
+        )
     else:
         df_weekly = pd.DataFrame(columns=['Week from', 'Workload'])
 
@@ -537,10 +541,10 @@ with tab6:
         comp_values = df_comp['Competition (positioning)'].tolist()
 
         for i in range(len(comp_dates)):
-            start_date = comp_dates[i-1] if i > 0 else None
+            start_date = comp_dates[i - 1] if i > 0 else None
             end_date = comp_dates[i]
 
-            # Select S&C data between competitions (or before the first competition)
+            # Select S&C data between competitions (or before the first one)
             if start_date is not None:
                 mask = (df_weekly['Week from'] > start_date) & (df_weekly['Week from'] <= end_date)
             else:
@@ -551,12 +555,16 @@ with tab6:
             if pre_period.empty:
                 continue
 
-            # Compute statistics
+            # Compute stats
             mean_workload = pre_period['Workload'].mean()
             workload_sd = pre_period['Workload'].std()
             workload_trend = pre_period['Workload'].diff().mean()
-            max_to_min_ratio = (pre_period['Workload'].max() / pre_period['Workload'].min()
-                                if len(pre_period) > 1 and pre_period['Workload'].min() != 0 else np.nan)
+
+            if len(pre_period) > 1 and pre_period['Workload'].min() != 0:
+                max_to_min_ratio = pre_period['Workload'].max() / pre_period['Workload'].min()
+            else:
+                max_to_min_ratio = np.nan
+
             last_week_workload = pre_period.iloc[-1]['Workload']
             pct_change_last2 = (
                 (pre_period.iloc[-1]['Workload'] - pre_period.iloc[-2]['Workload'])
@@ -564,6 +572,7 @@ with tab6:
                 if len(pre_period) > 1 else np.nan
             )
 
+            # Append pattern
             pattern = {
                 'Name': selected_name,
                 'Competition_Date': end_date.date(),
@@ -578,22 +587,32 @@ with tab6:
             }
             training_patterns.append(pattern)
 
-    # --- Final table ---
+    # --- Final Table ---
     pattern_df = pd.DataFrame(training_patterns)
 
-    # Remove duplicates (based on competition date or name)
     if not pattern_df.empty:
-        pattern_df = pattern_df.drop_duplicates(subset=['Name', 'Competition_Date'])
+        # Remove duplicates & sort chronologically
+        pattern_df = (
+            pattern_df
+            .drop_duplicates(subset=['Name', 'Competition_Date'])
+            .sort_values('Competition_Date')
+            .reset_index(drop=True)
+        )
 
-        st.write("### 📊 Computed Training Patterns")
+        st.write("### 📊 Computed Training Patterns (Chronological)")
         st.dataframe(
-            pattern_df[['Name', 'Competition_Date', 'Competition_Position', 'Mean_Workload',
-                        'Workload_SD', 'Last_Week_Workload', 'Workload_Trend',
-                        'Max_to_Min_Ratio', 'Pct_Change_Last2Weeks', 'Weeks_counted']],
+            pattern_df[
+                ['Name', 'Competition_Date', 'Competition_Position',
+                 'Mean_Workload', 'Workload_SD', 'Last_Week_Workload',
+                 'Workload_Trend', 'Max_to_Min_Ratio',
+                 'Pct_Change_Last2Weeks', 'Weeks_counted']
+            ],
             use_container_width=True
         )
     else:
         st.info("No valid training pattern data found for the selected athlete.")
+
+
 
 
 

@@ -2,6 +2,7 @@ import pandas as pd
 import streamlit as st
 import plotly.express as px
 from io import BytesIO
+import altair as alt
 
 # --- Load data ---
 df = pd.read_excel("All_data.xlsx")
@@ -710,6 +711,7 @@ with tab6:
             st.altair_chart(chart, use_container_width=True)
         else:
             st.info("No recent weekly workload data available for this competition.")
+
 
 
 

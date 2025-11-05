@@ -393,39 +393,42 @@ with tab5:
     st.write("### 🏆 Competition Analyser")
 
     # --- Check necessary columns ---
-    required_cols = ['Area','Name', 'Date', 'Competition (positioning)']
+    required_cols = ['Area', 'Name', 'Date', 'Competition (positioning)']
     if not all(col in filtered_df.columns for col in required_cols):
-        st.warning("Missing one or more required columns: Name, Date, or Competition (positioning)")
+        st.warning("Missing one or more required columns: Area, Name, Date, or Competition (positioning)")
     elif filtered_df.empty:
         st.info("No data available for competition analysis. Please adjust your filters.")
     else:
-        # --- Filters for Name and Year ---
+        # --- Filters for Area, Name, and Year ---
         st.subheader("Filters")
 
         # Filter by Area
-        available_areas = sorted(df_name_filtered['Area'].dropna().unique())
+        available_areas = sorted(filtered_df['Area'].dropna().unique())
         selected_area = st.selectbox(
             "Select Area", 
             available_areas, 
             key="competition_area_select"
         )
 
-        available_names = sorted(filtered_df['Name'].dropna().unique())
+        # Filter by Athlete Name
+        df_area_filtered = filtered_df[filtered_df['Area'] == selected_area]
+        available_names = sorted(df_area_filtered['Name'].dropna().unique())
         selected_name = st.selectbox(
             "Select Athlete", 
             available_names, 
             key="competition_name_select"
         )
 
-        df_name_filtered = filtered_df[filtered_df['Name'] == selected_name]
+        # Filter by Year
+        df_name_filtered = df_area_filtered[df_area_filtered['Name'] == selected_name]
         available_years = sorted(pd.to_datetime(df_name_filtered['Date']).dt.year.dropna().unique())
-
         selected_years = st.multiselect(
             "Select Year(s)", 
             available_years, 
             default=available_years[-1:], 
             key="competition_year_select"
         )
+
 
         # --- Filter Data ---
         df_selected = df_name_filtered[
@@ -503,6 +506,7 @@ with tab5:
                     height=500
                 )
                 st.plotly_chart(fig_bar, use_container_width=True)
+
 
 
 

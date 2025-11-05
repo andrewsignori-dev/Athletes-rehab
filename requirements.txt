@@ -7,6 +7,7 @@ fpdf
 altair_saver
 selenium
 plotly
+numpy
 
 
 

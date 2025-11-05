@@ -608,51 +608,63 @@ with tab6:
             ],
             use_container_width=True
         )
+                # --- Interpretation of patterns ---
+        st.write("### 🧩 Performance Interpretation")
 
-        # --- Compute correlations ---
-        metrics = ['Mean_Workload', 'Workload_StDev', 'Last_Week_Workload', 'Workload_Trend', '%_Change_2weeks']
-        corr = pattern_df[metrics + ['Competition_Position']].corr(method='spearman')
+        interpretations = []
 
-        # --- Extract correlation column of interest ---
-        corr_target = corr[['Competition_Position']].drop('Competition_Position')
-        corr_target = corr_target.rename(columns={'Competition_Position': 'Correlation_with_Position'})
+        for _, row in pattern_df.iterrows():
+            comp_date = row['Competition_Date']
+            position = row['Competition_Position']
+            trend = row['Workload_Trend']
+            pct_change = row['%_Change_2weeks']
+            mean_work = row['Mean_Workload']
+            last_week = row['Last_Week_Workload']
 
-        # --- Add interpretation ---
-        def interpret_corr(value):
-            if value < -0.1:
-                return "🔵 Negative → Higher workload linked with better result"
-            elif value > 0.3:
-                return "🔴 Positive → Higher workload linked with worse result"
+            # --- Determine trend meaning ---
+            if pd.notna(trend):
+                if trend < 0:
+                    trend_text = f"⬇️ Workload trend **{trend:.2f}** indicates a **decreasing training load** before the competition."
+                    trend_eval = "This may have allowed recovery and contributed to a better performance."
+                elif trend > 0:
+                    trend_text = f"⬆️ Workload trend **{trend:.2f}** indicates an **increasing load** leading up to competition."
+                    trend_eval = "This could reflect residual fatigue or ongoing build-up, potentially affecting performance."
+                else:
+                    trend_text = f"➡️ Workload trend is stable (**{trend:.2f}**)."
+                    trend_eval = "Training intensity remained constant."
             else:
-                return "⚪ Weak/No clear correlation"
+                trend_text = "⚪ No workload trend data available."
+                trend_eval = ""
 
-        corr_target['Interpretation'] = corr_target['Correlation_with_Position'].apply(interpret_corr)
+            # --- Interpret short-term workload change ---
+            if pd.notna(pct_change):
+                if pct_change < 0:
+                    short_text = f"📉 The last 2 weeks saw a **{pct_change:.1f}% drop** in workload, suggesting a taper period."
+                elif pct_change > 0:
+                    short_text = f"📈 The last 2 weeks saw a **{pct_change:.1f}% increase**, suggesting intensified training."
+                else:
+                    short_text = "📊 Workload stayed constant in the last 2 weeks."
+            else:
+                short_text = ""
 
-        # --- Display correlation table ---
-        st.write("### 📊 Correlation between Workload Metrics and Competition Results")
-        st.dataframe(corr_target.style.format({'Correlation_with_Position': '{:.2f}'}))
+            # --- Combine interpretation ---
+            summary = (
+                f"**Competition ({comp_date} – Position {int(position)})**  \n"
+                f"- Average workload: **{mean_work:.1f}**  \n"
+                f"- Last week workload: **{last_week:.1f}**  \n"
+                f"{trend_text} {trend_eval}  \n"
+                f"{short_text}"
+            )
 
-        # --- Heatmap visualization ---
-        st.write("### 🌡️ Correlation Heatmap")
-        fig, ax = plt.subplots(figsize=(6, 4))
-        sns.heatmap(
-            corr.loc[metrics, ['Competition_Position']],
-            annot=True, cmap="coolwarm", center=0, fmt=".2f",
-            cbar_kws={'label': 'Correlation'}
-        )
-        plt.title("Correlation with Competition Position (lower = better)")
-        st.pyplot(fig)
+            interpretations.append(summary)
 
-        # --- Add legend for interpretation ---
-        st.markdown("""
-        **Interpretation Guide:**
-        - 🔵 **Negative correlation** → Higher workload metric tends to link with **better performance** (lower position).  
-        - 🔴 **Positive correlation** → Higher workload metric tends to link with **worse performance** (higher position).  
-        - ⚪ **Weak correlation** → No strong or consistent relationship detected.
-        """)
+        for text in interpretations:
+            st.markdown(f"{text}\n---")
 
-    else:
-        st.info("No valid training pattern data found for the selected athlete.")
+
+
+
+
 
 
 

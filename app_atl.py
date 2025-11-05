@@ -689,16 +689,27 @@ with tab6:
         </div>
         """, unsafe_allow_html=True)
 
-        # --- Optional: add a small contextual plot ---
-        st.write("### 📈 Training Load Before Competition")
+    st.write("### 📈 Training Load Before Competition")
         recent_weeks = df_weekly[df_weekly['Week from'] <= pd.to_datetime(selected_comp)].tail(8)
-        fig, ax = plt.subplots(figsize=(6, 3))
-        ax.plot(recent_weeks['Week from'], recent_weeks['Workload'], marker='o', linestyle='-')
-        ax.set_title(f"Workload Trend Before {selected_comp}")
-        ax.set_xlabel("Week")
-        ax.set_ylabel("Workload")
-        plt.xticks(rotation=45)
-        st.pyplot(fig)
+
+        if not recent_weeks.empty:
+            chart = (
+                alt.Chart(recent_weeks)
+                .mark_line(point=True)
+                .encode(
+                    x=alt.X('Week from:T', title='Week'),
+                    y=alt.Y('Workload:Q', title='Workload'),
+                    tooltip=['Week from', 'Workload']
+                )
+                .properties(
+                    width=600,
+                    height=250,
+                    title=f"Workload Trend Before {selected_comp}"
+                )
+            )
+            st.altair_chart(chart, use_container_width=True)
+        else:
+            st.info("No recent weekly workload data available for this competition.")
 
 
 

@@ -502,11 +502,11 @@ with tab6:
 
     # --- Filter Data ---
     # Filter Area (Rehab, S&C, Competition)
-    filtered_area = st.selectbox("Select Area", ['S&C', 'Competition'], key="area_select")
+    filtered_area = st.selectbox("Select Area", ['S&C', 'Competition'], key="area_select_snc")
 
     # Filter by Name based on available options
     available_names = sorted(df['Name'].dropna().unique())
-    selected_name = st.selectbox("Select Athlete", available_names, key="competition_name_select")
+    selected_name = st.selectbox("Select Athlete", available_names, key=f"competition_name_select_{filtered_area}")
 
     # --- Filter dataset based on selected filters (Area and Name) ---
     df_filtered = df[(df['Area'] == filtered_area) & (df['Name'] == selected_name)].copy()
@@ -540,6 +540,8 @@ with tab6:
             st.dataframe(df_final[['Name', 'Month-Year', 'Competition (positioning)', 'Workload']], use_container_width=True)
         else:
             st.info("No data available for the selected filters.")
+
+
 
 
 

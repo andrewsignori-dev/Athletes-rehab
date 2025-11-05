@@ -560,19 +560,25 @@ with tab6:
             workload_sd = pre_period['Workload'].std()
             workload_trend = pre_period['Workload'].diff().mean()
 
+            # Safe computation of max/min ratio
             if len(pre_period) > 1 and pre_period['Workload'].min() != 0:
                 max_to_min_ratio = pre_period['Workload'].max() / pre_period['Workload'].min()
             else:
                 max_to_min_ratio = np.nan
 
+            # Last week workload
             last_week_workload = pre_period.iloc[-1]['Workload']
-            pct_change_last2 = (
-                (pre_period.iloc[-1]['Workload'] - pre_period.iloc[-2]['Workload'])
-                / pre_period.iloc[-2]['Workload'] * 100
-                if len(pre_period) > 1 else np.nan
-            )
 
-            # Append pattern
+            # Percentage change between last 2 weeks
+            if len(pre_period) > 1:
+                pct_change_last2 = (
+                    (pre_period.iloc[-1]['Workload'] - pre_period.iloc[-2]['Workload'])
+                    / pre_period.iloc[-2]['Workload'] * 100
+                )
+            else:
+                pct_change_last2 = np.nan
+
+            # Append result
             pattern = {
                 'Name': selected_name,
                 'Competition_Date': end_date.date(),
@@ -585,6 +591,7 @@ with tab6:
                 'Pct_Change_Last2Weeks': round(pct_change_last2, 2) if pd.notna(pct_change_last2) else np.nan,
                 'Weeks_counted': len(pre_period)
             }
+
             training_patterns.append(pattern)
 
     # --- Final Table ---
@@ -611,6 +618,7 @@ with tab6:
         )
     else:
         st.info("No valid training pattern data found for the selected athlete.")
+
 
 
 

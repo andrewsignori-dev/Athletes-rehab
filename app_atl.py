@@ -611,6 +611,14 @@ with tab6:
     else:
         st.info("No valid training pattern data found for the selected athlete.")
 
+    metrics = ['Mean_Workload', 'Workload_StDev', 'Last_Week_Workload', 
+               'Workload_Trend', '%_Change_2weeks']
+
+    correlations = pattern_df[metrics + ['Competition_Position']].corr(method='spearman')
+    st.write("### 📈 Correlations with Competition Position")
+    st.dataframe(correlations[['Competition_Position']].sort_values('Competition_Position'))
+
+
 
 
 

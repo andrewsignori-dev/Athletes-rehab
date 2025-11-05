@@ -403,7 +403,6 @@ with tab5:
         st.subheader("Filters")
 
         # Filter by Athlete Name
-        df_area_filtered = filtered_df[filtered_df['Area'] == selected_area]
         available_names = sorted(df_area_filtered['Name'].dropna().unique())
         selected_name = st.selectbox(
             "Select Athlete", 
@@ -498,6 +497,7 @@ with tab5:
                     height=500
                 )
                 st.plotly_chart(fig_bar, use_container_width=True)
+
 
 
 

@@ -395,15 +395,15 @@ with tab5:
     # --- Check necessary columns ---
     required_cols = ['Name', 'Date', 'Competition (positioning)']
     if not all(col in filtered_df.columns for col in required_cols):
-        st.warning("Missing one or more required columns: Area, Name, Date, or Competition (positioning)")
+        st.warning("Missing one or more required columns: Name, Date, or Competition (positioning)")
     elif filtered_df.empty:
         st.info("No data available for competition analysis. Please adjust your filters.")
     else:
-        # --- Filters for Area, Name, and Year ---
+        # --- Filters for Name and Year ---
         st.subheader("Filters")
 
         # Filter by Athlete Name
-        available_names = sorted(df_area_filtered['Name'].dropna().unique())
+        available_names = sorted(filtered_df['Name'].dropna().unique())
         selected_name = st.selectbox(
             "Select Athlete", 
             available_names, 
@@ -411,7 +411,7 @@ with tab5:
         )
 
         # Filter by Year
-        df_name_filtered = df_area_filtered[df_area_filtered['Name'] == selected_name]
+        df_name_filtered = filtered_df[filtered_df['Name'] == selected_name]
         available_years = sorted(pd.to_datetime(df_name_filtered['Date']).dt.year.dropna().unique())
         selected_years = st.multiselect(
             "Select Year(s)", 
@@ -420,12 +420,11 @@ with tab5:
             key="competition_year_select"
         )
 
-
         # --- Filter Data ---
         df_selected = df_name_filtered[
             pd.to_datetime(df_name_filtered['Date']).dt.year.isin(selected_years)
         ].copy()
-
+        
         if df_selected.empty:
             st.info("No competition records found for this athlete and selected year(s).")
         else:
@@ -497,6 +496,7 @@ with tab5:
                     height=500
                 )
                 st.plotly_chart(fig_bar, use_container_width=True)
+
 
 
 

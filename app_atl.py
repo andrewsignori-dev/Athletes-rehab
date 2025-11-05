@@ -507,6 +507,16 @@ with tab5:
                 )
                 st.plotly_chart(fig_bar, use_container_width=True)
 
+                # --- Filter data by Area ---
+                df_area_filtered = df_display[df_display['Area'] == selected_area]
+
+                if df_area_filtered.empty:
+                    st.info(f"No competition records found for the selected area: {selected_area}.")
+                else:
+                    st.write(f"### 📋 Competition Results for {selected_area}")
+                    st.dataframe(df_area_filtered, use_container_width=True)
+
+
 
 
 

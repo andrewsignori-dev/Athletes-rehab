@@ -603,13 +603,14 @@ with tab6:
         st.dataframe(
             pattern_df[
                 ['Name', 'Competition_Date', 'Competition_Position',
-                 'Mean_Workload', 'Workload_StDdev', 'Last_Week_Workload',
+                 'Mean_Workload', 'Workload_StDev', 'Last_Week_Workload',
                  'Workload_Trend','%_Change_2weeks', 'Weeks_counted']
             ],
             use_container_width=True
         )
     else:
         st.info("No valid training pattern data found for the selected athlete.")
+
 
 
 

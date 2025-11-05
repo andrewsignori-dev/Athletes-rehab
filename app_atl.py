@@ -500,62 +500,100 @@ with tab5:
 with tab6:
     st.write("### 🏆 Competition Predictor - S&C")
 
-    # --- Filter Data ---
-    # Filter Area (Rehab, S&C, Competition)
-    filtered_area = st.selectbox("Select Area", ['S&C', 'Competition'], key="area_select_snc")
-
-    # Filter by Name based on available options
+    # --- Select Athlete ---
     available_names = sorted(df['Name'].dropna().unique())
-    selected_name = st.selectbox("Select Athlete", available_names, key=f"competition_name_select_{filtered_area}")
+    selected_name = st.selectbox("Select Athlete", available_names, key="competition_name_select_training_pattern")
 
-    # --- Filter dataset based on selected filters (Area and Name) ---
-    df_filtered = df[(df['Area'] == filtered_area) & (df['Name'] == selected_name)].copy()
+    # --- Prepare Data ---
+    df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
+    df = df.dropna(subset=['Date'])
 
-    # --- Data Preparation ---
-    # Convert 'Date' to datetime to extract Month-Year
-    df_filtered['Date'] = pd.to_datetime(df_filtered['Date'])
-    df_filtered['Month-Year'] = df_filtered['Date'].dt.to_period('M')  # Extract Month-Year (e.g., 2025-07)
+    # --- Filter S&C Data ---
+    df_snc = df[(df['Area'] == 'S&C') & (df['Name'] == selected_name)].copy()
+    if df_snc.empty:
+        st.info("No S&C training data available for this athlete.")
+    else:
+        # Compute workload
+        df_snc['Workload'] = df_snc['Set'] * df_snc['Rep'] * df_snc['Load (kg)']
 
-    if filtered_area == 'S&C':
-        # Calculate the Workload (Set * Rep * Load) for S&C exercises
-        df_filtered['Workload'] = df_filtered['Set'] * df_filtered['Rep'] * df_filtered['Load (kg)']
-        
-        # Group by Month-Year and calculate mean workload
-        df_snc_workload = df_filtered.groupby(['Name', 'Month-Year'])['Workload'].mean().reset_index()
+        # Convert to weekly-level workload (averaged)
+        df_snc['Week from'] = df_snc['Date'] - pd.to_timedelta(df_snc['Date'].dt.weekday, unit='d')
+        df_weekly = (
+            df_snc.groupby('Week from')['Workload']
+            .mean()
+            .reset_index()
+            .sort_values('Week from')
+        )
 
         # --- Filter Competition Data ---
-        df_competition = df[(df['Area'] == 'Competition') & (df['Name'] == selected_name)].copy()
+        df_comp = df[(df['Area'] == 'Competition') & (df['Name'] == selected_name)].copy()
+        df_comp = df_comp.dropna(subset=['Competition (positioning)'])
+        df_comp['Date'] = pd.to_datetime(df_comp['Date'], errors='coerce')
+        df_comp = df_comp.sort_values('Date')
 
-        # Extract Month-Year for Competition data
-        df_competition['Date'] = pd.to_datetime(df_competition['Date'])
-        df_competition['Month-Year'] = df_competition['Date'].dt.to_period('M')
-
-        # --- Filter out rows where Competition (positioning) is NaN ---
-        df_competition = df_competition.dropna(subset=['Competition (positioning)'])
-
-        # --- Merge S&C Workload with Competition Data ---
-        df_final = pd.merge(df_snc_workload, df_competition[['Name', 'Month-Year', 'Competition (positioning)']], 
-                            on=['Name', 'Month-Year'], how='left')
-
-        # --- Eliminate duplicates based on Name and Month-Year, keeping only one row ---
-        df_final = df_final.drop_duplicates(subset=['Name', 'Month-Year'])
-
-        # --- Filter to show only rows where Competition (positioning) is not NaN ---
-        df_final = df_final.dropna(subset=['Competition (positioning)'])
-
-        # --- Calculate Mean Workload for the Previous 3 Months ---
-        # Sort by 'Month-Year' to apply rolling window
-        df_final = df_final.sort_values(by=['Name', 'Month-Year'])
-
-        # Apply rolling window for the previous 3 months (this will include the current month and the 2 previous months)
-        df_final['Rolling_Mean_Workload'] = df_final.groupby('Name')['Workload'].rolling(window=3, min_periods=1).mean().reset_index(drop=True)
-
-        # --- Display Final Table ---
-        if not df_final.empty:
-            st.write("### Final Results (3-Month Rolling Mean Workload)")
-            st.dataframe(df_final[['Name', 'Month-Year', 'Competition (positioning)', 'Rolling_Mean_Workload']], use_container_width=True)
+        if df_comp.empty:
+            st.info("No valid competitions found for this athlete.")
         else:
-            st.info("No data available for the selected filters.")
+            # --- Analysis Parameters ---
+            window = 12  # weeks before competition
+            training_patterns = []
+
+            competition_dates = df_comp['Date'].tolist()
+            competition_values = df_comp['Competition (positioning)'].tolist()
+
+            # --- Analyze Workload Before Each Competition ---
+            for comp_date, comp_value in zip(competition_dates, competition_values):
+                # Select training weeks before competition
+                mask = (df_weekly['Week from'] < comp_date) & (
+                    df_weekly['Week from'] >= comp_date - pd.Timedelta(weeks=window)
+                )
+                pre_period = df_weekly.loc[mask, ['Week from', 'Workload']].dropna().sort_values('Week from')
+
+                # Round workloads
+                pre_period['Workload'] = pre_period['Workload'].round(1)
+
+                # --- Compute metrics ---
+                last_week_workload = pre_period.iloc[-1]['Workload'] if len(pre_period) > 0 else np.nan
+                workload_trend = pre_period['Workload'].diff().mean() if len(pre_period) > 1 else np.nan
+                max_to_min_ratio = (
+                    pre_period['Workload'].max() / pre_period['Workload'].min()
+                    if len(pre_period) > 1 and pre_period['Workload'].min() != 0
+                    else np.nan
+                )
+                mean_workload = pre_period['Workload'].mean() if len(pre_period) > 0 else np.nan
+                workload_sd = pre_period['Workload'].std() if len(pre_period) > 1 else np.nan
+
+                if len(pre_period) > 1:
+                    pct_change_last2 = (
+                        (pre_period.iloc[-1]['Workload'] - pre_period.iloc[-2]['Workload'])
+                        / pre_period.iloc[-2]['Workload']
+                        * 100
+                    )
+                else:
+                    pct_change_last2 = np.nan
+
+                # --- Store result ---
+                pattern = {
+                    'Name': selected_name,
+                    'Competition_Date': comp_date.date(),
+                    'Competition_Position': comp_value,
+                    'Mean_Workload': round(mean_workload, 2),
+                    'Workload_SD': round(workload_sd, 2) if not np.isnan(workload_sd) else np.nan,
+                    'Last_Week_Workload': round(last_week_workload, 2) if not np.isnan(last_week_workload) else np.nan,
+                    'Workload_Trend': round(workload_trend, 2) if not np.isnan(workload_trend) else np.nan,
+                    'Max_to_Min_Ratio': round(max_to_min_ratio, 2) if not np.isnan(max_to_min_ratio) else np.nan,
+                    'Pct_Change_Last2Weeks': round(pct_change_last2, 2) if not np.isnan(pct_change_last2) else np.nan,
+                }
+                training_patterns.append(pattern)
+
+            # --- Display Results ---
+            pattern_df = pd.DataFrame(training_patterns)
+            if not pattern_df.empty:
+                st.write(f"### 📊 Training Workload Patterns ({window} weeks before each competition)")
+                st.dataframe(pattern_df, use_container_width=True)
+            else:
+                st.info("No training workload data found in the selected pre-competition periods.")
+
 
 
 

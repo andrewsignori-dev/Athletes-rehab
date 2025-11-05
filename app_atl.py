@@ -689,7 +689,7 @@ with tab6:
         </div>
         """, unsafe_allow_html=True)
 
-    st.write("### 📈 Training Load Before Competition")
+        st.write("### 📈 Training Load Before Competition")
         recent_weeks = df_weekly[df_weekly['Week from'] <= pd.to_datetime(selected_comp)].tail(8)
 
         if not recent_weeks.empty:

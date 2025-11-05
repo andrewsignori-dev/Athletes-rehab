@@ -393,7 +393,7 @@ with tab5:
     st.write("### 🏆 Competition Analyser")
 
     # --- Check necessary columns ---
-    required_cols = ['Name', 'Date', 'Competition (positioning)']
+    required_cols = ['Area','Name', 'Date', 'Competition (positioning)']
     if not all(col in filtered_df.columns for col in required_cols):
         st.warning("Missing one or more required columns: Name, Date, or Competition (positioning)")
     elif filtered_df.empty:
@@ -401,6 +401,14 @@ with tab5:
     else:
         # --- Filters for Name and Year ---
         st.subheader("Filters")
+
+        # Filter by Area
+        available_areas = sorted(df_name_filtered['Area'].dropna().unique())
+        selected_area = st.selectbox(
+            "Select Area", 
+            available_areas, 
+            key="competition_area_select"
+        )
 
         available_names = sorted(filtered_df['Name'].dropna().unique())
         selected_name = st.selectbox(
@@ -466,17 +474,6 @@ with tab5:
                 st.write("### 📋 Competition Results Table")
                 st.dataframe(df_display, use_container_width=True)
 
-                # --- Download Filtered Data ---
-                selected_years_str = "_".join(map(str, selected_years))
-                comp_csv = df_display.to_csv(index=False).encode('utf-8')
-                st.download_button(
-                    label="⬇️ Download Competition Data for Selection",
-                    data=comp_csv,
-                    file_name=f"competition_{selected_name}_{selected_years_str}.csv",
-                    mime="text/csv",
-                    key="competition_download_button"
-                )
-
                 # --- 📊 Bar Plot of Competition Scores ---
                 st.write("### 📊 Competition Positioning Over Time")
 
@@ -507,14 +504,7 @@ with tab5:
                 )
                 st.plotly_chart(fig_bar, use_container_width=True)
 
-                # --- Filter data by Area ---
-                df_area_filtered = df_display[df_display['Area'] == selected_area]
 
-                if df_area_filtered.empty:
-                    st.info(f"No competition records found for the selected area: {selected_area}.")
-                else:
-                    st.write(f"### 📋 Competition Results for {selected_area}")
-                    st.dataframe(df_area_filtered, use_container_width=True)
 
 
 

@@ -505,15 +505,15 @@ with tab6:
 
     # --- Filter by Year ---
     available_years = sorted(df['Date'].dt.year.dropna().unique())  # Get unique years from the dataset
-    selected_year = st.selectbox("Select Year", available_years, key="competition_year_select")
+    selected_year = st.selectbox("Select Year", available_years, key=f"competition_year_select_{id(df)}")
 
     # --- Filter Data ---
     # Filter Area (Rehab, S&C, Competition)
-    filtered_area = st.selectbox("Select Area", ['S&C', 'Competition'], key="area_select_snc")
+    filtered_area = st.selectbox("Select Area", ['S&C', 'Competition'], key=f"area_select_snc_{id(df)}")
 
     # Filter by Name based on available options
     available_names = sorted(df['Name'].dropna().unique())
-    selected_name = st.selectbox("Select Athlete", available_names, key=f"competition_name_select_{filtered_area}")
+    selected_name = st.selectbox("Select Athlete", available_names, key=f"competition_name_select_{filtered_area}_{id(df)}")
 
     # --- Filter dataset based on selected Year, Area, and Name ---
     df_filtered = df[(df['Area'] == filtered_area) & 
@@ -558,6 +558,8 @@ with tab6:
             st.dataframe(df_final[['Name', 'Month-Year', 'Competition (positioning)', 'Workload']], use_container_width=True)
         else:
             st.info("No data available for the selected filters.")
+
+
 
 
 

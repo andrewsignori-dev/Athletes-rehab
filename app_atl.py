@@ -608,10 +608,18 @@ with tab6:
             ],
             use_container_width=True
         )
-                # --- Interpretation of patterns ---
+        
+        # --- Interpretation of patterns with performance tiers ---
         st.write("### 🧩 Performance Interpretation")
 
         interpretations = []
+
+        # Determine dynamic thresholds (so it works for all athletes)
+        if not pattern_df.empty:
+            pos_min, pos_max = pattern_df['Competition_Position'].min(), pattern_df['Competition_Position'].max()
+            # Divide into 3 segments (good, medium, weak)
+            threshold1 = pos_min + (pos_max - pos_min) / 3
+            threshold2 = pos_min + 2 * (pos_max - pos_min) / 3
 
         for _, row in pattern_df.iterrows():
             comp_date = row['Competition_Date']
@@ -621,36 +629,48 @@ with tab6:
             mean_work = row['Mean_Workload']
             last_week = row['Last_Week_Workload']
 
-            # --- Determine trend meaning ---
+            # --- Determine performance tier ---
+            if position <= threshold1:
+                perf_tier = "🏅 **Top performance**"
+                perf_comment = "Excellent result — top-tier finish."
+            elif position <= threshold2:
+                perf_tier = "⚖️ **Mid performance**"
+                perf_comment = "Average result — room for improvement."
+            else:
+                perf_tier = "🔴 **Lower performance**"
+                perf_comment = "Weaker result — possible fatigue or suboptimal preparation."
+
+            # --- Determine workload trend meaning ---
             if pd.notna(trend):
                 if trend < 0:
-                    trend_text = f"⬇️ Workload trend **{trend:.2f}** indicates a **decreasing training load** before the competition."
-                    trend_eval = "This may have allowed recovery and contributed to a better performance."
+                    trend_text = f"⬇️ Workload trend **{trend:.2f}** shows **training volume decreased** before competition."
+                    trend_eval = "This may have supported recovery and peak readiness."
                 elif trend > 0:
-                    trend_text = f"⬆️ Workload trend **{trend:.2f}** indicates an **increasing load** leading up to competition."
-                    trend_eval = "This could reflect residual fatigue or ongoing build-up, potentially affecting performance."
+                    trend_text = f"⬆️ Workload trend **{trend:.2f}** shows **training volume increased** before competition."
+                    trend_eval = "This might indicate fatigue accumulation or insufficient tapering."
                 else:
-                    trend_text = f"➡️ Workload trend is stable (**{trend:.2f}**)."
+                    trend_text = f"➡️ Workload trend stable (**{trend:.2f}**)."
                     trend_eval = "Training intensity remained constant."
             else:
                 trend_text = "⚪ No workload trend data available."
                 trend_eval = ""
 
-            # --- Interpret short-term workload change ---
+            # --- Short-term workload change interpretation ---
             if pd.notna(pct_change):
                 if pct_change < 0:
-                    short_text = f"📉 The last 2 weeks saw a **{pct_change:.1f}% drop** in workload, suggesting a taper period."
+                    short_text = f"📉 The last 2 weeks saw a **{pct_change:.1f}% drop** — typical of a taper phase."
                 elif pct_change > 0:
                     short_text = f"📈 The last 2 weeks saw a **{pct_change:.1f}% increase**, suggesting intensified training."
                 else:
-                    short_text = "📊 Workload stayed constant in the last 2 weeks."
+                    short_text = "📊 Workload remained constant in the final 2 weeks."
             else:
                 short_text = ""
 
-            # --- Combine interpretation ---
+            # --- Combine into one summary ---
             summary = (
                 f"**Competition ({comp_date} – Position {int(position)})**  \n"
-                f"- Average workload: **{mean_work:.1f}**  \n"
+                f"{perf_tier}: {perf_comment}  \n"
+                f"- Mean workload: **{mean_work:.1f}**  \n"
                 f"- Last week workload: **{last_week:.1f}**  \n"
                 f"{trend_text} {trend_eval}  \n"
                 f"{short_text}"
@@ -658,8 +678,10 @@ with tab6:
 
             interpretations.append(summary)
 
+        # --- Display all interpretations ---
         for text in interpretations:
             st.markdown(f"{text}\n---")
+
 
 
 

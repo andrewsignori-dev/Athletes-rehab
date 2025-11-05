@@ -691,24 +691,81 @@ with tab6:
         """, unsafe_allow_html=True)
 
         st.write("### 📈 Training Load Before Competition")
-        recent_weeks = df_weekly[df_weekly['Week from'] <= pd.to_datetime(selected_comp)].tail(8)
+
+        # Select competition for insights
+        selected_comp = st.selectbox(
+            "Select a competition date for insights:",
+            options=pattern_df['Competition_Date'].astype(str).tolist(),
+            key="competition_insight_select"
+        )
+
+        # Filter recent workload data before the selected competition
+        selected_comp_date = pd.to_datetime(selected_comp)
+        recent_weeks = df_weekly[df_weekly['Week from'] <= selected_comp_date].tail(8)
 
         if not recent_weeks.empty:
-            chart = (
+            # Base workload trend line
+            workload_line = (
                 alt.Chart(recent_weeks)
-                .mark_line(point=True)
+                .mark_line(point=alt.OverlayMarkDef(color='steelblue', filled=True, size=80))
                 .encode(
                     x=alt.X('Week from:T', title='Week'),
                     y=alt.Y('Workload:Q', title='Workload'),
                     tooltip=['Week from', 'Workload']
                 )
+            )
+
+            # Vertical line for selected competition date
+            competition_marker = (
+                alt.Chart(pd.DataFrame({'Week from': [selected_comp_date]}))
+                .mark_rule(color='red', strokeWidth=2)
+                .encode(
+                    x='Week from:T',
+                    tooltip=[alt.Tooltip('Week from:T', title='Competition Date')]
+                )
+            )
+
+            chart = (
+                (workload_line + competition_marker)
                 .properties(
-                    width=600,
-                    height=250,
+                    width='container',
+                    height=300,
                     title=f"Workload Trend Before {selected_comp}"
                 )
             )
+
             st.altair_chart(chart, use_container_width=True)
+
+            # --- Insight interpretation ---
+            selected_row = pattern_df[pattern_df['Competition_Date'].astype(str) == selected_comp]
+            if not selected_row.empty:
+                row = selected_row.iloc[0]
+                position = row['Competition_Position']
+                trend = row['Workload_Trend']
+
+                # Define performance segment
+                if position <= 10:
+                    perf_segment = "🏅 Top performance (1–10)"
+                elif position <= 30:
+                    perf_segment = "⚙️ Mid performance (11–30)"
+                else:
+                    perf_segment = "📉 Lower performance (31+)"
+
+                # Interpret workload trend
+                if trend < 0:
+                    trend_comment = "🟢 Negative trend → Possible tapering before competition, likely improving performance."
+                elif trend > 0:
+                    trend_comment = "🔴 Positive trend → Increasing load before competition, possibly causing fatigue."
+                else:
+                    trend_comment = "⚪ Stable trend → No major workload change before the event."
+
+                st.markdown(f"""
+                ### 🧩 Insight Summary
+                - **Competition Date:** `{selected_comp}`
+                - **Position:** {position} ({perf_segment})
+                - **Workload Trend:** {round(trend, 2)}
+                - **Interpretation:** {trend_comment}
+                """)
         else:
             st.info("No recent weekly workload data available for this competition.")
 

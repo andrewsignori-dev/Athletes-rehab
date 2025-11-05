@@ -609,78 +609,98 @@ with tab6:
             use_container_width=True
         )
         
-        # --- Interpretation of patterns with performance tiers ---
-        st.write("### 🧩 Performance Interpretation")
+        # --- Interactive interpretation ---
+        st.write("### 🧠 Smart Performance Insights")
 
-        interpretations = []
+        # Let the user pick a specific competition date
+        selected_comp = st.selectbox(
+            "Select a competition to analyze:",
+            pattern_df['Competition_Date'].astype(str),
+            key=f"competition_analysis_{selected_name}"
+        )
 
-        # Determine dynamic thresholds (so it works for all athletes)
-        if not pattern_df.empty:
-            pos_min, pos_max = pattern_df['Competition_Position'].min(), pattern_df['Competition_Position'].max()
-            # Divide into 3 segments (good, medium, weak)
-            threshold1 = pos_min + (pos_max - pos_min) / 3
-            threshold2 = pos_min + 2 * (pos_max - pos_min) / 3
+        # Get the selected row
+        selected_row = pattern_df[pattern_df['Competition_Date'].astype(str) == selected_comp].iloc[0]
 
-        for _, row in pattern_df.iterrows():
-            comp_date = row['Competition_Date']
-            position = row['Competition_Position']
-            trend = row['Workload_Trend']
-            pct_change = row['%_Change_2weeks']
-            mean_work = row['Mean_Workload']
-            last_week = row['Last_Week_Workload']
+        position = selected_row['Competition_Position']
+        trend = selected_row['Workload_Trend']
+        pct_change = selected_row['%_Change_2weeks']
+        mean_work = selected_row['Mean_Workload']
+        last_week = selected_row['Last_Week_Workload']
+        workload_sd = selected_row['Workload_StDev']
+        weeks = selected_row['Weeks_counted']
 
-            # --- Determine performance tier ---
-            if position <= threshold1:
-                perf_tier = "🏅 **Top performance**"
-                perf_comment = "Excellent result — top-tier finish."
-            elif position <= threshold2:
-                perf_tier = "⚖️ **Mid performance**"
-                perf_comment = "Average result — room for improvement."
+        # --- Compute performance segments dynamically ---
+        pos_min, pos_max = pattern_df['Competition_Position'].min(), pattern_df['Competition_Position'].max()
+        threshold1 = pos_min + (pos_max - pos_min) / 3
+        threshold2 = pos_min + 2 * (pos_max - pos_min) / 3
+
+        if position <= threshold1:
+            perf_tier = "🏅 **Top performance**"
+            perf_comment = "Excellent result — peak readiness achieved."
+            color = "#16a34a"  # green
+        elif position <= threshold2:
+            perf_tier = "⚖️ **Mid performance**"
+            perf_comment = "Moderate result — stable but with improvement potential."
+            color = "#facc15"  # yellow
+        else:
+            perf_tier = "🔴 **Lower performance**"
+            perf_comment = "Suboptimal result — possible overtraining or fatigue."
+            color = "#dc2626"  # red
+
+        # --- Interpret workload trend ---
+        if pd.notna(trend):
+            if trend < 0:
+                trend_text = f"⬇️ Workload decreased by {abs(trend):.1f} units per week."
+                trend_eval = "This tapering phase likely supported performance."
+            elif trend > 0:
+                trend_text = f"⬆️ Workload increased by {trend:.1f} units per week."
+                trend_eval = "Possible fatigue accumulation before competition."
             else:
-                perf_tier = "🔴 **Lower performance**"
-                perf_comment = "Weaker result — possible fatigue or suboptimal preparation."
+                trend_text = "➡️ Workload remained stable."
+                trend_eval = "Training intensity was constant."
+        else:
+            trend_text, trend_eval = "⚪ No workload trend data available.", ""
 
-            # --- Determine workload trend meaning ---
-            if pd.notna(trend):
-                if trend < 0:
-                    trend_text = f"⬇️ Workload trend **{trend:.2f}** shows **training volume decreased** before competition."
-                    trend_eval = "This may have supported recovery and peak readiness."
-                elif trend > 0:
-                    trend_text = f"⬆️ Workload trend **{trend:.2f}** shows **training volume increased** before competition."
-                    trend_eval = "This might indicate fatigue accumulation or insufficient tapering."
-                else:
-                    trend_text = f"➡️ Workload trend stable (**{trend:.2f}**)."
-                    trend_eval = "Training intensity remained constant."
+        # --- Interpret short-term workload change ---
+        if pd.notna(pct_change):
+            if pct_change < 0:
+                short_text = f"📉 Final 2 weeks workload dropped by {abs(pct_change):.1f}%. Typical tapering pattern."
+            elif pct_change > 0:
+                short_text = f"📈 Final 2 weeks workload increased by {pct_change:.1f}%. Possible overload before event."
             else:
-                trend_text = "⚪ No workload trend data available."
-                trend_eval = ""
+                short_text = "📊 Workload remained constant before competition."
+        else:
+            short_text = "⚪ No 2-week workload change data available."
 
-            # --- Short-term workload change interpretation ---
-            if pd.notna(pct_change):
-                if pct_change < 0:
-                    short_text = f"📉 The last 2 weeks saw a **{pct_change:.1f}% drop** — typical of a taper phase."
-                elif pct_change > 0:
-                    short_text = f"📈 The last 2 weeks saw a **{pct_change:.1f}% increase**, suggesting intensified training."
-                else:
-                    short_text = "📊 Workload remained constant in the final 2 weeks."
-            else:
-                short_text = ""
+        # --- Display summary card ---
+        st.markdown(f"""
+        <div style="padding:1.2em; border-radius:12px; background-color:#f9fafb; border-left:8px solid {color};">
+            <h4 style="margin-top:0;">📅 Competition: <b>{selected_comp}</b></h4>
+            <p><b>Position:</b> {int(position)} — {perf_tier}</p>
+            <p>{perf_comment}</p>
+            <hr>
+            <p>📊 <b>Mean workload:</b> {mean_work:.1f}<br>
+               💪 <b>Last week workload:</b> {last_week:.1f}<br>
+               📈 <b>Workload trend:</b> {trend_text}<br>
+               🧩 {trend_eval}<br>
+               🔁 {short_text}<br>
+               ⏱️ Based on <b>{weeks}</b> training weeks.</p>
+        </div>
+        """, unsafe_allow_html=True)
 
-            # --- Combine into one summary ---
-            summary = (
-                f"**Competition ({comp_date} – Position {int(position)})**  \n"
-                f"{perf_tier}: {perf_comment}  \n"
-                f"- Mean workload: **{mean_work:.1f}**  \n"
-                f"- Last week workload: **{last_week:.1f}**  \n"
-                f"{trend_text} {trend_eval}  \n"
-                f"{short_text}"
-            )
+        # --- Optional: add a small contextual plot ---
+        st.write("### 📈 Training Load Before Competition")
+        recent_weeks = df_weekly[df_weekly['Week from'] <= pd.to_datetime(selected_comp)].tail(8)
+        fig, ax = plt.subplots(figsize=(6, 3))
+        ax.plot(recent_weeks['Week from'], recent_weeks['Workload'], marker='o', linestyle='-')
+        ax.set_title(f"Workload Trend Before {selected_comp}")
+        ax.set_xlabel("Week")
+        ax.set_ylabel("Workload")
+        plt.xticks(rotation=45)
+        st.pyplot(fig)
 
-            interpretations.append(summary)
 
-        # --- Display all interpretations ---
-        for text in interpretations:
-            st.markdown(f"{text}\n---")
 
 
 

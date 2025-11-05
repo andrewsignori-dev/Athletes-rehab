@@ -393,7 +393,7 @@ with tab5:
     st.write("### 🏆 Competition Analyser")
 
     # --- Check necessary columns ---
-    required_cols = ['Area', 'Name', 'Date', 'Competition (positioning)']
+    required_cols = ['Name', 'Date', 'Competition (positioning)']
     if not all(col in filtered_df.columns for col in required_cols):
         st.warning("Missing one or more required columns: Area, Name, Date, or Competition (positioning)")
     elif filtered_df.empty:
@@ -401,14 +401,6 @@ with tab5:
     else:
         # --- Filters for Area, Name, and Year ---
         st.subheader("Filters")
-
-        # Filter by Area
-        available_areas = sorted(filtered_df['Area'].dropna().unique())
-        selected_area = st.selectbox(
-            "Select Area", 
-            available_areas, 
-            key="competition_area_select"
-        )
 
         # Filter by Athlete Name
         df_area_filtered = filtered_df[filtered_df['Area'] == selected_area]
@@ -506,6 +498,7 @@ with tab5:
                     height=500
                 )
                 st.plotly_chart(fig_bar, use_container_width=True)
+
 
 
 

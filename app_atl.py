@@ -500,6 +500,9 @@ with tab5:
 with tab6:
     st.write("### 🏆 Competition Predictor - S&C")
 
+    # --- Convert 'Date' to datetime format if not already ---
+    df['Date'] = pd.to_datetime(df['Date'], errors='coerce')  # Convert to datetime, coerce invalid parsing to NaT
+
     # --- Filter by Year ---
     available_years = sorted(df['Date'].dt.year.dropna().unique())  # Get unique years from the dataset
     selected_year = st.selectbox("Select Year", available_years, key="competition_year_select")
@@ -555,6 +558,7 @@ with tab6:
             st.dataframe(df_final[['Name', 'Month-Year', 'Competition (positioning)', 'Workload']], use_container_width=True)
         else:
             st.info("No data available for the selected filters.")
+
 
 
 

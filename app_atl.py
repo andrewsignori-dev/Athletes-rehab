@@ -393,13 +393,13 @@ with tab5:
     st.write("### 🏆 Competition Analyser")
 
     # --- Check necessary columns ---
-    required_cols = ['Name', 'Date', 'Competition (positioning)']
+    required_cols = ['Name', 'Date', 'Competition (positioning)', 'Area', 'Set', 'Rep', 'Load (kg)']
     if not all(col in filtered_df.columns for col in required_cols):
-        st.warning("Missing one or more required columns: Name, Date, or Competition (positioning)")
+        st.warning("Missing one or more required columns: Name, Date, Competition (positioning), Area, Set, Rep, Load")
     elif filtered_df.empty:
         st.info("No data available for competition analysis. Please adjust your filters.")
     else:
-        # --- Filters for Name and Year ---
+        # --- Filters for Name, Year, and Area ---
         st.subheader("Filters")
 
         # Filter by Athlete Name
@@ -496,6 +496,45 @@ with tab5:
                     height=500
                 )
                 st.plotly_chart(fig_bar, use_container_width=True)
+
+                # --- Calculate Mean Workload for the Previous 3 Months ---
+                df_display['Workload'] = df_display['Set'] * df_display['Rep'] * df_display['Load (kg)']
+                
+                # Convert the competition dates to Month-Year format
+                df_display['Month-Year'] = pd.to_datetime(df_display['Date']).dt.to_period('M')
+
+                # --- For each competition, calculate the mean workload of the previous 3 months ---
+                mean_workload_results = []
+
+                for _, comp_row in df_display.iterrows():
+                    comp_date = pd.to_datetime(comp_row['Date'])
+                    comp_month_year = comp_row['Month-Year']
+
+                    # Filter the dataset for S&C or Rehab areas within the previous 3 months
+                    prev_3_months_df = filtered_df[
+                        (pd.to_datetime(filtered_df['Date']).dt.to_period('M') >= comp_month_year - 1) & 
+                        (pd.to_datetime(filtered_df['Date']).dt.to_period('M') <= comp_month_year) &
+                        (filtered_df['Area'].isin(['S&C', 'Rehab'])) & 
+                        (filtered_df['Name'] == selected_name)
+                    ]
+                    
+                    # Calculate the workload for these entries
+                    prev_3_months_df['Workload'] = prev_3_months_df['Set'] * prev_3_months_df['Rep'] * prev_3_months_df['Load (kg)']
+                    
+                    # Mean workload for the previous 3 months
+                    mean_workload = prev_3_months_df['Workload'].mean()
+                    mean_workload_results.append({
+                        'Competition Date': comp_row['Date'],
+                        'Competition Positioning': comp_row['Competition (positioning)'],
+                        'Mean Workload (Previous 3 Months)': mean_workload
+                    })
+
+                # Create a DataFrame for the mean workloads
+                mean_workload_df = pd.DataFrame(mean_workload_results)
+
+                st.write("### 🧑‍💻 Mean Workload for Previous 3 Months per Competition Interval")
+                st.dataframe(mean_workload_df, use_container_width=True)
+
 
 
 

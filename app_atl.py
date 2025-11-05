@@ -500,6 +500,48 @@ with tab5:
 with tab6:
     st.write("### 🏆 Competition Predictor - S&C")
 
+    # --- Filter Data ---
+    # Filter Area (Rehab, S&C, Competition)
+    filtered_area = st.selectbox("Select Area", ['S&C', 'Competition'], key="area_select")
+
+    # Filter by Name based on available options
+    available_names = sorted(df['Name'].dropna().unique())
+    selected_name = st.selectbox("Select Athlete", available_names, key="competition_name_select")
+
+    # --- Filter dataset based on selected filters (Area and Name) ---
+    df_filtered = df[(df['Area'] == filtered_area) & (df['Name'] == selected_name)].copy()
+
+    # --- Data Preparation ---
+    # Convert 'Date' to datetime to extract Month-Year
+    df_filtered['Date'] = pd.to_datetime(df_filtered['Date'])
+    df_filtered['Month-Year'] = df_filtered['Date'].dt.to_period('M')  # Extract Month-Year (e.g., 2025-07)
+
+    if filtered_area == 'S&C':
+        # Calculate the Workload (Set * Rep * Load) for S&C exercises
+        df_filtered['Workload'] = df_filtered['Set'] * df_filtered['Rep'] * df_filtered['Load (kg)']
+        
+        # Group by Month-Year and calculate mean workload
+        df_snc_workload = df_filtered.groupby(['Name', 'Month-Year'])['Workload'].mean().reset_index()
+
+        # --- Filter Competition Data ---
+        df_competition = df[(df['Area'] == 'Competition') & (df['Name'] == selected_name)].copy()
+
+        # Extract Month-Year for Competition data
+        df_competition['Date'] = pd.to_datetime(df_competition['Date'])
+        df_competition['Month-Year'] = df_competition['Date'].dt.to_period('M')
+
+        # --- Merge S&C Workload with Competition Data ---
+        df_final = pd.merge(df_snc_workload, df_competition[['Name', 'Month-Year', 'Competition (positioning)']], 
+                            on=['Name', 'Month-Year'], how='left')
+
+        # --- Display Final Table ---
+        if not df_final.empty:
+            st.write("### Final Results")
+            st.dataframe(df_final[['Name', 'Month-Year', 'Competition (positioning)', 'Workload']], use_container_width=True)
+        else:
+            st.info("No data available for the selected filters.")
+
+
 
 
 

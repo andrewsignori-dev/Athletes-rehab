@@ -500,6 +500,10 @@ with tab5:
 with tab6:
     st.write("### 🏆 Competition Predictor - S&C")
 
+    # --- Filter by Year ---
+    available_years = sorted(df['Date'].dt.year.dropna().unique())  # Get unique years from the dataset
+    selected_year = st.selectbox("Select Year", available_years, key="competition_year_select")
+
     # --- Filter Data ---
     # Filter Area (Rehab, S&C, Competition)
     filtered_area = st.selectbox("Select Area", ['S&C', 'Competition'], key="area_select_snc")
@@ -508,8 +512,10 @@ with tab6:
     available_names = sorted(df['Name'].dropna().unique())
     selected_name = st.selectbox("Select Athlete", available_names, key=f"competition_name_select_{filtered_area}")
 
-    # --- Filter dataset based on selected filters (Area and Name) ---
-    df_filtered = df[(df['Area'] == filtered_area) & (df['Name'] == selected_name)].copy()
+    # --- Filter dataset based on selected Year, Area, and Name ---
+    df_filtered = df[(df['Area'] == filtered_area) & 
+                     (df['Name'] == selected_name) & 
+                     (df['Date'].dt.year == selected_year)].copy()
 
     # --- Data Preparation ---
     # Convert 'Date' to datetime to extract Month-Year
@@ -524,7 +530,7 @@ with tab6:
         df_snc_workload = df_filtered.groupby(['Name', 'Month-Year'])['Workload'].mean().reset_index()
 
         # --- Filter Competition Data ---
-        df_competition = df[(df['Area'] == 'Competition') & (df['Name'] == selected_name)].copy()
+        df_competition = df[(df['Area'] == 'Competition') & (df['Name'] == selected_name) & (df['Date'].dt.year == selected_year)].copy()
 
         # Extract Month-Year for Competition data
         df_competition['Date'] = pd.to_datetime(df_competition['Date'])
@@ -540,12 +546,17 @@ with tab6:
         # --- Eliminate duplicates based on Name and Month-Year, keeping only one row ---
         df_final = df_final.drop_duplicates(subset=['Name', 'Month-Year'])
 
+        # --- Filter to show only rows where Competition (positioning) is not NaN ---
+        df_final = df_final.dropna(subset=['Competition (positioning)'])
+
         # --- Display Final Table ---
         if not df_final.empty:
             st.write("### Final Results")
             st.dataframe(df_final[['Name', 'Month-Year', 'Competition (positioning)', 'Workload']], use_container_width=True)
         else:
             st.info("No data available for the selected filters.")
+
+
 
 
 

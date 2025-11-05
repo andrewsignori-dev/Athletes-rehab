@@ -559,12 +559,6 @@ with tab6:
             mean_workload = pre_period['Workload'].mean()
             workload_sd = pre_period['Workload'].std()
             workload_trend = pre_period['Workload'].diff().mean()
-            
-            # Safe computation of max/min ratio (no numpy)
-            if len(pre_period) > 1 and pre_period['Workload'].min() != 0:
-                max_to_min_ratio = pre_period['Workload'].max() / pre_period['Workload'].min()
-            else:
-                max_to_min_ratio = float('nan')
 
             # Last week workload
             last_week_workload = pre_period.iloc[-1]['Workload']
@@ -584,11 +578,10 @@ with tab6:
                 'Competition_Date': end_date.date(),
                 'Competition_Position': comp_values[i],
                 'Mean_Workload': round(mean_workload, 2),
-                'Workload_SD': round(workload_sd, 2) if pd.notna(workload_sd) else float('nan'),
+                'Workload_StDev': round(workload_sd, 2) if pd.notna(workload_sd) else float('nan'),
                 'Last_Week_Workload': round(last_week_workload, 2),
                 'Workload_Trend': round(workload_trend, 2) if pd.notna(workload_trend) else float('nan'),
-                'Max_to_Min_Ratio': round(max_to_min_ratio, 2) if pd.notna(max_to_min_ratio) else float('nan'),
-                'Pct_Change_Last2Weeks': round(pct_change_last2, 2) if pd.notna(pct_change_last2) else float('nan'),
+                '%_Change_2weeks': round(pct_change_last2, 2) if pd.notna(pct_change_last2) else float('nan'),
                 'Weeks_counted': len(pre_period)
             }
 
@@ -606,18 +599,18 @@ with tab6:
             .reset_index(drop=True)
         )
 
-        st.write("### 📊 Computed Training Patterns (Chronological)")
+        st.write("### 📊 Training Patterns (Chronological order)")
         st.dataframe(
             pattern_df[
                 ['Name', 'Competition_Date', 'Competition_Position',
-                 'Mean_Workload', 'Workload_SD', 'Last_Week_Workload',
-                 'Workload_Trend', 'Max_to_Min_Ratio',
-                 'Pct_Change_Last2Weeks', 'Weeks_counted']
+                 'Mean_Workload', 'Workload_StDdev', 'Last_Week_Workload',
+                 'Workload_Trend','%_Change_2weeks', 'Weeks_counted']
             ],
             use_container_width=True
         )
     else:
         st.info("No valid training pattern data found for the selected athlete.")
+
 
 
 

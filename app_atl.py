@@ -543,12 +543,21 @@ with tab6:
         # --- Filter to show only rows where Competition (positioning) is not NaN ---
         df_final = df_final.dropna(subset=['Competition (positioning)'])
 
+        # --- Calculate Mean Workload for the Previous 3 Months ---
+        # Sort by 'Month-Year' to apply rolling window
+        df_final = df_final.sort_values(by=['Name', 'Month-Year'])
+
+        # Apply rolling window for the previous 3 months (this will include the current month and the 2 previous months)
+        df_final['Rolling_Mean_Workload'] = df_final.groupby('Name')['Workload'].rolling(window=3, min_periods=1).mean().reset_index(drop=True)
+
         # --- Display Final Table ---
         if not df_final.empty:
-            st.write("### Final Results")
-            st.dataframe(df_final[['Name', 'Month-Year', 'Competition (positioning)', 'Workload']], use_container_width=True)
+            st.write("### Final Results (3-Month Rolling Mean Workload)")
+            st.dataframe(df_final[['Name', 'Month-Year', 'Competition (positioning)', 'Rolling_Mean_Workload']], use_container_width=True)
         else:
             st.info("No data available for the selected filters.")
+
+
 
 
 

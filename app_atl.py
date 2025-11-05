@@ -609,6 +609,36 @@ with tab6:
             ],
             use_container_width=True
         )
+                st.write("### 📈 Training Load Before Competition")
+
+        # Select competition for insights
+        selected_comp = st.selectbox(
+            "Select a competition date for insights:",
+            options=pattern_df['Competition_Date'].astype(str).tolist(),
+            key="competition_insight_select"
+        )
+
+        # Filter recent workload data before the selected competition
+        selected_comp_date = pd.to_datetime(selected_comp)
+        recent_weeks = df_weekly[df_weekly['Week from'] <= selected_comp_date].tail(8)
+
+        if not recent_weeks.empty:
+            chart = (
+                alt.Chart(recent_weeks)
+                .mark_line(point=alt.OverlayMarkDef(color='steelblue', filled=True, size=80))
+                .encode(
+                    x=alt.X('Week from:T', title='Week'),
+                    y=alt.Y('Workload:Q', title='Workload'),
+                    tooltip=['Week from', 'Workload']
+                )
+                .properties(
+                    width='container',
+                    height=300,
+                    title=f"Workload Trend Before {selected_comp}"
+                )
+            )
+
+            st.altair_chart(chart, use_container_width=True)
         
         # --- Interactive interpretation ---
         st.write("### 🧠 Smart Performance Insights")
@@ -690,36 +720,7 @@ with tab6:
         </div>
         """, unsafe_allow_html=True)
 
-        st.write("### 📈 Training Load Before Competition")
 
-        # Select competition for insights
-        selected_comp = st.selectbox(
-            "Select a competition date for insights:",
-            options=pattern_df['Competition_Date'].astype(str).tolist(),
-            key="competition_insight_select"
-        )
-
-        # Filter recent workload data before the selected competition
-        selected_comp_date = pd.to_datetime(selected_comp)
-        recent_weeks = df_weekly[df_weekly['Week from'] <= selected_comp_date].tail(8)
-
-        if not recent_weeks.empty:
-            chart = (
-                alt.Chart(recent_weeks)
-                .mark_line(point=alt.OverlayMarkDef(color='steelblue', filled=True, size=80))
-                .encode(
-                    x=alt.X('Week from:T', title='Week'),
-                    y=alt.Y('Workload:Q', title='Workload'),
-                    tooltip=['Week from', 'Workload']
-                )
-                .properties(
-                    width='container',
-                    height=300,
-                    title=f"Workload Trend Before {selected_comp}"
-                )
-            )
-
-            st.altair_chart(chart, use_container_width=True)
 
 
 

@@ -609,7 +609,8 @@ with tab6:
             ],
             use_container_width=True
         )
-                st.write("### 📈 Training Load Before Competition")
+        
+        st.write("### 📈 Training Load Before Competition")
 
         # Select competition for insights
         selected_comp = st.selectbox(
@@ -719,6 +720,7 @@ with tab6:
                ⏱️ Based on <b>{weeks}</b> training weeks.</p>
         </div>
         """, unsafe_allow_html=True)
+
 
 
 

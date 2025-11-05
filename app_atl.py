@@ -530,9 +530,15 @@ with tab6:
         df_competition['Date'] = pd.to_datetime(df_competition['Date'])
         df_competition['Month-Year'] = df_competition['Date'].dt.to_period('M')
 
+        # --- Filter out rows where Competition (positioning) is NaN ---
+        df_competition = df_competition.dropna(subset=['Competition (positioning)'])
+
         # --- Merge S&C Workload with Competition Data ---
         df_final = pd.merge(df_snc_workload, df_competition[['Name', 'Month-Year', 'Competition (positioning)']], 
                             on=['Name', 'Month-Year'], how='left')
+
+        # --- Eliminate duplicates based on Name and Month-Year, keeping only one row ---
+        df_final = df_final.drop_duplicates(subset=['Name', 'Month-Year'])
 
         # --- Display Final Table ---
         if not df_final.empty:
@@ -540,6 +546,8 @@ with tab6:
             st.dataframe(df_final[['Name', 'Month-Year', 'Competition (positioning)', 'Workload']], use_container_width=True)
         else:
             st.info("No data available for the selected filters.")
+
+
 
 
 

@@ -577,14 +577,14 @@ with tab6:
                     'Name': selected_name,
                     'Competition_Date': comp_date.date(),
                     'Competition_Position': comp_value,
-                    'Mean_Workload': round(mean_workload, 2),
-                    'Workload_SD': round(workload_sd, 2) if not np.isnan(workload_sd) else np.nan,
-                    'Last_Week_Workload': round(last_week_workload, 2) if not np.isnan(last_week_workload) else np.nan,
-                    'Workload_Trend': round(workload_trend, 2) if not np.isnan(workload_trend) else np.nan,
-                    'Max_to_Min_Ratio': round(max_to_min_ratio, 2) if not np.isnan(max_to_min_ratio) else np.nan,
-                    'Pct_Change_Last2Weeks': round(pct_change_last2, 2) if not np.isnan(pct_change_last2) else np.nan,
+                    'Mean_Workload': round(mean_workload, 2) if pd.notna(mean_workload) else np.nan,
+                    'Workload_SD': round(workload_sd, 2) if pd.notna(workload_sd) else np.nan,
+                    'Last_Week_Workload': round(last_week_workload, 2) if pd.notna(last_week_workload) else np.nan,
+                    'Workload_Trend': round(workload_trend, 2) if pd.notna(workload_trend) else np.nan,
+                    'Max_to_Min_Ratio': round(max_to_min_ratio, 2) if pd.notna(max_to_min_ratio) else np.nan,
+                    'Pct_Change_Last2Weeks': round(pct_change_last2, 2) if pd.notna(pct_change_last2) else np.nan,
                 }
-                training_patterns.append(pattern)
+
 
             # --- Display Results ---
             pattern_df = pd.DataFrame(training_patterns)
@@ -593,6 +593,7 @@ with tab6:
                 st.dataframe(pattern_df, use_container_width=True)
             else:
                 st.info("No training workload data found in the selected pre-competition periods.")
+
 
 
 

@@ -498,125 +498,79 @@ with tab5:
                 st.plotly_chart(fig_bar, use_container_width=True)
 
 with tab6:
-    st.write("### 🏆 Competition Predictor - S&C (debug mode)")
+    st.write("### 🏆 Competition Predictor - S&C")
 
-    # --- Basic checks & conversions ---
-    st.write("**Raw dataframe size:**", df.shape)
-    # Ensure Date is datetime
+    # --- Filter by Area and Athlete ---
+    filtered_area = st.selectbox("Select Area", ['S&C', 'Competition'], key="area_select_snc_clean")
+    available_names = sorted(df['Name'].dropna().unique())
+    selected_name = st.selectbox("Select Athlete", available_names, key=f"competition_name_select_clean_{filtered_area}")
+
+    # --- Data Preparation ---
     df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
-
-    # Convert numeric columns safely
     df['Set'] = pd.to_numeric(df['Set'], errors='coerce')
     df['Rep'] = pd.to_numeric(df['Rep'], errors='coerce')
     df['Load (kg)'] = pd.to_numeric(df['Load (kg)'], errors='coerce')
 
-    # Show available names
-    available_names = sorted(df['Name'].dropna().unique())
-    st.write("Available names count:", len(available_names))
-    st.write("Available names sample:", available_names[:20])
-    if len(available_names) == 0:
-        st.error("No names found in df['Name'] — check your data.")
-    selected_name = st.selectbox("Select Athlete", available_names, key="competition_name_select_training_pattern_debug")
-
-    st.write("Selected name:", selected_name)
-
-    # --- Filter S&C and Competition data for the athlete ---
+    # --- Filter datasets ---
     df_snc = df[(df['Area'] == 'S&C') & (df['Name'] == selected_name)].copy()
     df_comp = df[(df['Area'] == 'Competition') & (df['Name'] == selected_name)].copy()
 
-    st.write("S&C raw rows for athlete:", len(df_snc))
-    st.write("Competition raw rows for athlete:", len(df_comp))
-
-    # show small samples to inspect
+    # --- Prepare S&C weekly workload ---
     if not df_snc.empty:
-        st.write("S&C sample rows:")
-        st.dataframe(df_snc.head(10))
-    else:
-        st.warning("No S&C rows after filtering. (Either Area values differ from 'S&C' or Name mismatch.)")
-
-    if not df_comp.empty:
-        st.write("Competition sample rows:")
-        st.dataframe(df_comp.head(10))
-    else:
-        st.warning("No Competition rows after filtering. (Either Area values differ from 'Competition' or Name mismatch.)")
-
-    # --- Prepare weekly workload from S&C ---
-    if not df_snc.empty:
-        # compute workload, drop rows missing required components
         df_snc['Workload'] = df_snc['Set'] * df_snc['Rep'] * df_snc['Load (kg)']
-        st.write("S&C workload - # rows with workload notnull:", df_snc['Workload'].notna().sum())
-
-        # Create weekly bins: use Monday of that week as 'Week from'
         df_snc['Week from'] = (df_snc['Date'] - pd.to_timedelta(df_snc['Date'].dt.weekday, unit='d')).dt.normalize()
-
-        df_weekly = (
-            df_snc.dropna(subset=['Workload', 'Week from'])
-                 .groupby('Week from', as_index=False)['Workload']
-                 .mean()
-                 .sort_values('Week from')
-        )
-
-        st.write("Weekly S&C rows:", len(df_weekly))
-        st.dataframe(df_weekly.head(10))
-
+        df_weekly = df_snc.dropna(subset=['Workload', 'Week from']).groupby('Week from', as_index=False)['Workload'].mean()
     else:
         df_weekly = pd.DataFrame(columns=['Week from', 'Workload'])
 
-    # --- Prepare competition dates (only where positioning exists) ---
+    # --- Prepare competition data ---
     if not df_comp.empty:
         df_comp['Competition (positioning)'] = pd.to_numeric(df_comp['Competition (positioning)'], errors='coerce')
-        df_comp = df_comp.dropna(subset=['Competition (positioning)', 'Date'])
-        df_comp = df_comp.sort_values('Date')
-        st.write("Competition rows with position and date:", len(df_comp))
-        st.dataframe(df_comp[['Date', 'Competition (positioning)']].head(10))
+        df_comp = df_comp.dropna(subset=['Competition (positioning)', 'Date']).sort_values('Date')
     else:
-        st.warning("No competition rows to analyze (after dropping NaN positions).")
+        df_comp = pd.DataFrame(columns=['Date', 'Competition (positioning)'])
 
-    # --- Analysis parameters ---
-    window_weeks = st.number_input("Window (weeks before comp) to analyze", min_value=1, max_value=52, value=12, step=1, key="window_weeks_debug")
+    # --- Compute workload patterns between competitions ---
     training_patterns = []
+    if not df_comp.empty and not df_weekly.empty:
+        comp_dates = df_comp['Date'].tolist()
+        comp_values = df_comp['Competition (positioning)'].tolist()
 
-    # If no competitions or no weekly data, show diagnostic and stop
-    if df_comp.empty:
-        st.error("No competitions found (with valid positioning). Cannot compute pre-competition patterns.")
-    elif df_weekly.empty:
-        st.error("No weekly S&C workload data available. Check your S&C rows / workload computation.")
-    else:
-        # iterate competitions
-        competition_dates = df_comp['Date'].tolist()
-        competition_values = df_comp['Competition (positioning)'].tolist()
+        for i in range(len(comp_dates)):
+            start_date = comp_dates[i-1] if i > 0 else None
+            end_date = comp_dates[i]
 
-        for comp_date, comp_value in zip(competition_dates, competition_values):
-            mask = (df_weekly['Week from'] < comp_date) & (df_weekly['Week from'] >= (comp_date - pd.Timedelta(weeks=window_weeks)))
+            # Select S&C data between competitions (or before the first competition)
+            if start_date is not None:
+                mask = (df_weekly['Week from'] > start_date) & (df_weekly['Week from'] <= end_date)
+            else:
+                mask = (df_weekly['Week from'] <= end_date)
+
             pre_period = df_weekly.loc[mask, ['Week from', 'Workload']].dropna().sort_values('Week from')
 
-            st.write(f"Competition {comp_date.date()} -> Weeks found: {len(pre_period)}")
-            if not pre_period.empty:
-                st.dataframe(pre_period)
+            if pre_period.empty:
+                continue
 
-            # round for presentation
-            pre_period['Workload'] = pre_period['Workload'].round(1)
-
-            last_week_workload = pre_period.iloc[-1]['Workload'] if len(pre_period) > 0 else np.nan
-            workload_trend = pre_period['Workload'].diff().mean() if len(pre_period) > 1 else np.nan
+            # Compute statistics
+            mean_workload = pre_period['Workload'].mean()
+            workload_sd = pre_period['Workload'].std()
+            workload_trend = pre_period['Workload'].diff().mean()
             max_to_min_ratio = (pre_period['Workload'].max() / pre_period['Workload'].min()
                                 if len(pre_period) > 1 and pre_period['Workload'].min() != 0 else np.nan)
-            mean_workload = pre_period['Workload'].mean() if len(pre_period) > 0 else np.nan
-            workload_sd = pre_period['Workload'].std() if len(pre_period) > 1 else np.nan
-
-            if len(pre_period) > 1:
-                pct_change_last2 = ((pre_period.iloc[-1]['Workload'] - pre_period.iloc[-2]['Workload'])
-                                    / pre_period.iloc[-2]['Workload'] * 100)
-            else:
-                pct_change_last2 = np.nan
+            last_week_workload = pre_period.iloc[-1]['Workload']
+            pct_change_last2 = (
+                (pre_period.iloc[-1]['Workload'] - pre_period.iloc[-2]['Workload'])
+                / pre_period.iloc[-2]['Workload'] * 100
+                if len(pre_period) > 1 else np.nan
+            )
 
             pattern = {
                 'Name': selected_name,
-                'Competition_Date': comp_date.date(),
-                'Competition_Position': comp_value,
-                'Mean_Workload': round(mean_workload, 2) if pd.notna(mean_workload) else np.nan,
+                'Competition_Date': end_date.date(),
+                'Competition_Position': comp_values[i],
+                'Mean_Workload': round(mean_workload, 2),
                 'Workload_SD': round(workload_sd, 2) if pd.notna(workload_sd) else np.nan,
-                'Last_Week_Workload': round(last_week_workload, 2) if pd.notna(last_week_workload) else np.nan,
+                'Last_Week_Workload': round(last_week_workload, 2),
                 'Workload_Trend': round(workload_trend, 2) if pd.notna(workload_trend) else np.nan,
                 'Max_to_Min_Ratio': round(max_to_min_ratio, 2) if pd.notna(max_to_min_ratio) else np.nan,
                 'Pct_Change_Last2Weeks': round(pct_change_last2, 2) if pd.notna(pct_change_last2) else np.nan,
@@ -624,12 +578,23 @@ with tab6:
             }
             training_patterns.append(pattern)
 
-        pattern_df = pd.DataFrame(training_patterns)
-        if pattern_df.empty:
-            st.warning("Finished computation but pattern_df is empty — this means no pre-period weekly rows were found for any competition.")
-        else:
-            st.write("### Computed training patterns")
-            st.dataframe(pattern_df, use_container_width=True)
+    # --- Final table ---
+    pattern_df = pd.DataFrame(training_patterns)
+
+    # Remove duplicates (based on competition date or name)
+    if not pattern_df.empty:
+        pattern_df = pattern_df.drop_duplicates(subset=['Name', 'Competition_Date'])
+
+        st.write("### 📊 Computed Training Patterns")
+        st.dataframe(
+            pattern_df[['Name', 'Competition_Date', 'Competition_Position', 'Mean_Workload',
+                        'Workload_SD', 'Last_Week_Workload', 'Workload_Trend',
+                        'Max_to_Min_Ratio', 'Pct_Change_Last2Weeks', 'Weeks_counted']],
+            use_container_width=True
+        )
+    else:
+        st.info("No valid training pattern data found for the selected athlete.")
+
 
 
 

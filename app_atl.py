@@ -559,12 +559,12 @@ with tab6:
             mean_workload = pre_period['Workload'].mean()
             workload_sd = pre_period['Workload'].std()
             workload_trend = pre_period['Workload'].diff().mean()
-
-            # Safe computation of max/min ratio
+            
+            # Safe computation of max/min ratio (no numpy)
             if len(pre_period) > 1 and pre_period['Workload'].min() != 0:
                 max_to_min_ratio = pre_period['Workload'].max() / pre_period['Workload'].min()
             else:
-                max_to_min_ratio = np.nan
+                max_to_min_ratio = float('nan')
 
             # Last week workload
             last_week_workload = pre_period.iloc[-1]['Workload']
@@ -618,6 +618,7 @@ with tab6:
         )
     else:
         st.info("No valid training pattern data found for the selected athlete.")
+
 
 
 

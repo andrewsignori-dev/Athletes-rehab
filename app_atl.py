@@ -604,54 +604,57 @@ with tab6:
             pattern_df[
                 ['Name', 'Competition_Date', 'Competition_Position',
                  'Mean_Workload', 'Workload_StDev', 'Last_Week_Workload',
-                 'Workload_Trend','%_Change_2weeks', 'Weeks_counted']
+                 'Workload_Trend', '%_Change_2weeks', 'Weeks_counted']
             ],
             use_container_width=True
         )
+
+        # --- Compute correlations ---
+        metrics = ['Mean_Workload', 'Workload_StDev', 'Last_Week_Workload', 'Workload_Trend', '%_Change_2weeks']
+        corr = pattern_df[metrics + ['Competition_Position']].corr(method='spearman')
+
+        # --- Extract correlation column of interest ---
+        corr_target = corr[['Competition_Position']].drop('Competition_Position')
+        corr_target = corr_target.rename(columns={'Competition_Position': 'Correlation_with_Position'})
+
+        # --- Add interpretation ---
+        def interpret_corr(value):
+            if value < -0.1:
+                return "🔵 Negative → Higher workload linked with better result"
+            elif value > 0.3:
+                return "🔴 Positive → Higher workload linked with worse result"
+            else:
+                return "⚪ Weak/No clear correlation"
+
+        corr_target['Interpretation'] = corr_target['Correlation_with_Position'].apply(interpret_corr)
+
+        # --- Display correlation table ---
+        st.write("### 📊 Correlation between Workload Metrics and Competition Results")
+        st.dataframe(corr_target.style.format({'Correlation_with_Position': '{:.2f}'}))
+
+        # --- Heatmap visualization ---
+        st.write("### 🌡️ Correlation Heatmap")
+        fig, ax = plt.subplots(figsize=(6, 4))
+        sns.heatmap(
+            corr.loc[metrics, ['Competition_Position']],
+            annot=True, cmap="coolwarm", center=0, fmt=".2f",
+            cbar_kws={'label': 'Correlation'}
+        )
+        plt.title("Correlation with Competition Position (lower = better)")
+        st.pyplot(fig)
+
+        # --- Add legend for interpretation ---
+        st.markdown("""
+        **Interpretation Guide:**
+        - 🔵 **Negative correlation** → Higher workload metric tends to link with **better performance** (lower position).  
+        - 🔴 **Positive correlation** → Higher workload metric tends to link with **worse performance** (higher position).  
+        - ⚪ **Weak correlation** → No strong or consistent relationship detected.
+        """)
+
     else:
         st.info("No valid training pattern data found for the selected athlete.")
 
 
-    # --- Compute correlations ---
-    metrics = ['Mean_Workload', 'Workload_StDev', 'Last_Week_Workload','Workload_Trend', '%_Change_2weeks']
-
-    corr = pattern_df[metrics + ['Competition_Position']].corr(method='spearman')
-
-    # --- Extract correlation column of interest ---
-    corr_target = corr[['Competition_Position']].drop('Competition_Position')
-    corr_target = corr_target.rename(columns={'Competition_Position': 'Correlation_with_Position'})
-
-    # --- Add interpretation ---
-    def interpret_corr(value):
-        if value < -0.1:
-            return "🔵 Negative → Higher workload linked with better result"
-        elif value > 0.3:
-            return "🔴 Positive → Higher workload linked with worse result"
-        else:
-            return "⚪ Weak/No clear correlation"
-
-     corr_target['Interpretation'] = corr_target['Correlation_with_Position'].apply(interpret_corr)
-
-     # --- Display correlation table ---
-     st.write("### 📊 Correlation between Workload Metrics and Competition Results")
-     st.dataframe(corr_target.style.format({'Correlation_with_Position': '{:.2f}'}))
-
-     # --- Heatmap visualization ---
-     st.write("### 🌡️ Correlation Heatmap (Spearman)")
-     fig, ax = plt.subplots(figsize=(6, 4))
-     sns.heatmap(
-         corr.loc[metrics, ['Competition_Position']],
-         annot=True, cmap="coolwarm", center=0, fmt=".2f",
-         cbar_kws={'label': 'Correlation'})
-     plt.title("Correlation with Competition Position (lower = better)")
-     st.pyplot(fig)
-
-     # --- Add legend for interpretation ---
-     st.markdown("""
-     **Interpretation Guide:**
-     - 🔵 **Negative correlation** → Higher workload metric tends to link with **better performance** (lower position).  
-     - 🔴 **Positive correlation** → Higher workload metric tends to link with **worse performance** (higher position).  
-     - ⚪ **Weak correlation** → No strong or consistent relationship detected.""")
 
 
 

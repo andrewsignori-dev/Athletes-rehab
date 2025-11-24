@@ -9,6 +9,8 @@ df = pd.read_excel("All_data.xlsx")
 
 # Clean column names
 df.columns = df.columns.str.strip()
+# Remove duplicate rows
+df = df.drop_duplicates()
 
 # Ensure 'Date' is datetime
 df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
@@ -720,6 +722,7 @@ with tab6:
                ⏱️ Based on <b>{weeks}</b> training weeks.</p>
         </div>
         """, unsafe_allow_html=True)
+
 
 
 

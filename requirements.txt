@@ -1,13 +1,13 @@
-pandas
 streamlit
+pandas
+numpy
 openpyxl
 gdown
-altair
-fpdf
+altair<5
 altair_saver
-selenium
 plotly
-numpy
+fpdf
+selenium
 
 
 

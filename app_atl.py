@@ -5,7 +5,7 @@ from io import BytesIO
 import altair as alt
 
 # --- Load data ---
-df = pd.read_excel("All (1).xlsx")
+df = pd.read_excel("All (2).xlsx")
 
 # Clean column names
 df.columns = df.columns.str.strip()
